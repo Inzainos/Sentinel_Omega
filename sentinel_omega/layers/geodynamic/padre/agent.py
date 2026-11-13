@@ -70,6 +70,18 @@ class GeodynamicPadre(PadreAgent):
         self.omega_es_referencia: bool = False
         self.loki_probability: float = 0.0
         self.loki_threshold: float = 0.8
+        # MUERTA POR DISEÑO (J-3, medido 2026-11-12, EVALUACION_J3_2026-11-12.md):
+        # `loki_confirms` exige loki_probability >= 0.8, pero el máximo histórico
+        # del score crudo en fase viva es 0.7519 (ONNX; la regla llega a 0.70) y
+        # el Padre ve el score PONDERADO (máx efectivo 0.6174 con el peso en
+        # memoria 0.8212 del proceso actual). Con 0.70 tampoco confirmaría hoy.
+        # Además la rama-1 exige >= 2 alerts y en viva nunca coinciden dos
+        # (solo alfa2 alerta, 168 ciclos; beta1 una vez): 0/424 ciclos.
+        # El umbral NO decide si hay ALERT (las dos sub-ramas emiten ALERT; solo
+        # cambia el cap 0.98 vs 0.9), así que bajarlo no mueve ni la ganancia
+        # Molchan (0 ALERTs: indefinida bajo ambos umbrales) ni las falsas
+        # alarmas. No tocar este número sin revivir antes el segundo alertador
+        # y la escala efectiva del score; ver auditoria/J-agentes-y-restantes.md §J-3.
         # Evidencia cimática del ciclo (2026-10-25): qué vísperas históricas
         # empareja la figura viva. EVIDENCIA, no compuerta — la calibración
         # (medir_cimatica_evidencia: 147 vísperas LOO vs 44 calmas) midió que
@@ -256,6 +268,13 @@ class GeodynamicPadre(PadreAgent):
             # o no daba lo mismo, y su confirmación es imposible: posterior
             # ~1e-112). Solo sube la confianza cuando confirma.
             avg_conf = sum(s.confidence for s in alert_signals) / len(alert_signals)
+            # NOTA J-3 (2026-11-12): esta sub-rama (cap 0.98, "three acts") nunca ha
+            # disparado en producción (0 ALERTs del Padre en 424 ciclos-episodio
+            # vivos, 2026-10-05 -> 2026-11-12): loki_confirms es False siempre con
+            # el umbral 0.8 Y con 0.70 (máx efectivo 0.6174), y las condiciones de
+            # la rama-1 (>=2 alerts) tampoco se han dado nunca. Se conserva el código
+            # como documentación del diseño; si se quiere revivir, hace falta un
+            # segundo alertador antes que tocar el umbral.
             if loki_confirms:
                 final, reached, conf = SignalType.ALERT, True, min(
                     avg_conf + corroboracion * 0.15
