@@ -5,6 +5,10 @@
  * y las estadísticas del bot loki (/api/bots, filtrado client-side porque el
  * parámetro bot= no filtra). NO expone el estado de la ventana de resonancia
  * 26-29d — eso se muestra como no disponible, no se inventa.
+ *
+ * Toque creativo: el indicador de ciclo representa la ventana de resonancia
+ * de 27,275 días (un ciclo de Carrington) como un anillo que se completa
+ * cuando una tormenta Kp≥5 antecede una tormenta recurrente.
  */
 import { useCallback } from "react";
 import { api } from "@/lib/api";
@@ -18,6 +22,74 @@ import {
   TablaDatos,
   nivelDe,
 } from "@/components/ui/data";
+
+function CicloResonancia({ kp }: { kp: number | null }) {
+  // Posición simbólica en el ciclo de Carrington (27,275 d) — indicador visual,
+  // no una medición real de fase (la API no expone la fase del ciclo).
+  const fase = kp != null ? Math.min(100, Math.round((kp / 9) * 100)) : null;
+  const offset = 100 - (fase ?? 0);
+  return (
+    <Panel
+      titulo="Ciclo de Carrington (indicador visual)"
+      meta="ventana de resonancia 26-29 d · símbolo, no fase medida"
+      nota="Un ciclo de Carrington son ~27,275 días. El anillo muestra la intensidad relativa del Kp actual como referencia visual; la ventana de tormenta recurrente real se calcula en el runner contra tbl_clima_espacial_raw."
+    >
+      <div className="flex items-center gap-6">
+        <div className="relative w-24 h-24">
+          <svg
+            className="w-24 h-24 transform -rotate-90"
+            viewBox="0 0 48 48"
+          >
+            <circle
+              cx="24" cy="24" r="20.5"
+              fill="none"
+              stroke="var(--color-surface-sunken)"
+              strokeWidth="3"
+            />
+            {fase != null && (
+              <circle
+                cx="24" cy="24" r="20.5"
+                fill="none"
+                stroke="var(--color-acento)"
+                strokeWidth="3"
+                strokeDasharray={`${fase},100`}
+                strokeDashoffset={offset}
+                className="transition-all duration-700 ease-out"
+              />
+            )}
+            {!fase && (
+              <circle
+                cx="24" cy="24" r="20.5"
+                fill="none"
+                stroke="var(--color-border)"
+                strokeWidth="3"
+                strokeDasharray="12,12"
+              />
+            )}
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="mono font-bold text-xl">
+              {fase != null ? `${fase}%` : "—"}
+            </span>
+            <span className="texto-micro texto-desvanecido">intensidad Kp</span>
+          </div>
+        </div>
+        <div>
+          <div className="texto-micro texto-desvanecido uppercase tracking-wider">
+            ¿Tormenta recurrente esperada?
+          </div>
+          <div className="mono text-foreground font-bold">
+            {kp != null && kp >= 5 ? "VENTANA ABIERTA (Kp≥5)" : kp != null && kp >= 4 ? "inquietud" : "sin tormenta activa"}
+          </div>
+          <p className="mt-1 texto-micro texto-desvanecido">
+            Loki solo sube la confianza cuando la ventana de resonancia
+            confirma; jamás la baja. Ganancia medida 3,4× sobre 32 años.
+          </p>
+        </div>
+      </div>
+    </Panel>
+  );
+}
 
 export function LokiTab() {
   const ovF = useCallback(() => api.overview(), []);
@@ -47,6 +119,8 @@ export function LokiTab() {
 
   return (
     <div className="space-y-5">
+      <CicloResonancia kp={kp} />
+
       <Panel
         titulo="Resonancia de rotación solar — Loki"
         meta={kp != null ? `Kp actual ${kp.toFixed(2)}` : "sin Kp"}
@@ -93,7 +167,7 @@ export function LokiTab() {
               etiqueta: "Resultado",
               render: (r) => (
                 <span
-                  className="mono texto-micro fuente-negrita"
+                  className="mono texto-micro font-bold"
                   style={{
                     color:
                       r.resultado === "ACIERTO"
@@ -128,7 +202,7 @@ export function LokiTab() {
                 ? `${Number(loki.firmas_exigibles).toLocaleString("es-MX")} (${loki.pct_exigibles != null ? (Number(loki.pct_exigibles) * 100).toFixed(1) : "—"}%)`
                 : "—"
             }
-            contexto="exigible = discrimina eventos frente a calma (lift ≥ 2.0)"
+            contexto="exigible = discrimina eventos frente a calma (lift ≥ 2,0)"
           />
         </div>
       </Panel>

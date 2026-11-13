@@ -70,6 +70,19 @@ class GeodynamicPadre(PadreAgent):
         self.omega_es_referencia: bool = False
         self.loki_probability: float = 0.0
         self.loki_threshold: float = 0.8
+        # Evidencia cimática del ciclo (2026-10-25): qué vísperas históricas
+        # empareja la figura viva. EVIDENCIA, no compuerta — la calibración
+        # (medir_cimatica_evidencia: 147 vísperas LOO vs 44 calmas) midió que
+        # la calma empareja IGUAL (ganancia ≤1.2×, invertida en sim alta):
+        # cablearla como umbral sería numerología con cara de filtro. Viaja
+        # en metadata para que el registro del ciclo y los reportes la
+        # lleven, con la etiqueta de CONTEXTO.
+        self.cimatica_evidencia: Optional[Dict[str, Any]] = None
+
+    def registrar_cimatica_evidencia(self, ev: Dict[str, Any]) -> None:
+        """El launcher la calcula cada ciclo (tiene el features viva) y se
+        la entrega; el siguiente evaluate_consensus la porta en metadata."""
+        self.cimatica_evidencia = ev or None
 
     def set_pesos(self, pesos: Dict[str, float]) -> None:
         self.pesos_bots = dict(pesos or {})
@@ -289,4 +302,13 @@ class GeodynamicPadre(PadreAgent):
             all_sigs.append(omega_sig)
         if loki_sig:
             all_sigs.append(loki_sig)
-        return ConsensusResult(consensus_reached=reached, final_signal=final, confidence=conf, agent_signals=all_sigs, veto_active=veto_active, veto_reason=veto_reason, metadata={"families_active": active_families, "corroboracion_familiar": corroboracion, "cross_family": family_status, "note": note, "loki": loki_validation, **dual})
+        return ConsensusResult(consensus_reached=reached, final_signal=final, confidence=conf, agent_signals=all_sigs, veto_active=veto_active, veto_reason=veto_reason, metadata={
+            "families_active": active_families,
+            "corroboracion_familiar": corroboracion,
+            "cross_family": family_status,
+            "note": note,
+            "loki": loki_validation,
+            # Evidencia cimática — CONTEXTO etiquetado, nunca compuerta (la
+            # calibración va dentro del dict, en `calibracion`).
+            "cimatica_evidencia": self.cimatica_evidencia,
+            **dual})

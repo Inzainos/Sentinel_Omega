@@ -46,8 +46,8 @@ Tres consecuencias que conviene saber antes de leer cualquier cifra del sistema:
   da 0,899: el modelo dice *qué* nodo, no *cuándo*.
 
 **Operación: todo con `systemctl --user`**, sin `sudo`. Puertos en `127.0.0.1`
-— **5173** el tablero React (el que se trabaja), **8787** su API, **8510** el
-Streamlit legado.
+— **8128** el tablero Dash/Plotly **principal** (login + 17 pestañas), **8787** su API.
+— **5173** React/Vite legacy (comentado), **8510** Streamlit legado (comentado).
 
 Detalle reproducible en [`estado/BITACORA_2026-10-08.md`](estado/BITACORA_2026-10-08.md)
 y el resumen en [`CHANGELOG.md`](CHANGELOG.md).

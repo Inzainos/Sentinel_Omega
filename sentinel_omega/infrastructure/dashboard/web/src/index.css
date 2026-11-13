@@ -1,188 +1,269 @@
-/**
- * Estilos globales — Sentinel Omega
- *
- * Sistema de diseño (v3, 2026-09-28):
- *   1. El color saturado significa RIESGO. Nada más.
- *   2. Número comparable = cifra tabular (tabular-nums).
- *   3. Lo que no se midió se ve distinto de lo que midió cero.
- *
- * Contraste: la rampa de riesgo usa colores SATURADOS contra el fondo
- * oscuro (#0f1011) para que un HIGH/CRITICAL sea IMPOSIBLE de pasar por
- * alto. Los valores normales usan blanco puro (#f7f8f8) — no gris tenue.
- */
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&display=swap");
+
+:root {
+    --color-base-100: #e8e8ea;
+    --color-base-300: #a0a8b8;
+    --color-base-500: #77777f;
+    --color-base-600: #4a4a52;
+    --color-base-700: #2a2a31;
+    --color-base-750: #242429;
+    --color-base-800: #1a1a21;
+    --color-base-900: #101014;
+    --color-serie-1: #4db8ff;
+    --color-serie-2: #9b8cff;
+    --color-serie-3: #e0a7f4;
+    --color-serie-4: #4dd0a0;
+    --color-faint: #6b7280;
+    --color-border: rgba(255,255,255,0.06);
+    --color-fuente-desvanecido: #6b7280;
+    --color-aviso: #ff9100;
+    --color-calma: #10b981;
+    --color-atencion: #ffc107;
+    --color-critico: #ff1744;
+    --color-acento: #9b8cff;
+    --color-accent-cyan: #4db8ff;
+    --color-accent-violet: #9b8cff;
+    --color-accent-magenta: #e0a7f4;
+    --color-foreground: #f0f4f8;
+    --color-calma-dim: rgba(16,185,129,0.12);
+    --color-atencion-dim: rgba(255,193,7,0.12);
+    --color-aviso-dim: rgba(255,145,0,0.12);
+    --color-critico-dim: rgba(255,23,68,0.12);
+    --color-surface: #111214;
+    --color-surface-sunken: #0b0c0d;
+    --color-superficie: #111214;
+    --color-superficie-sunido: #0b0c0d;
+    --color-fondo-superficie-sunido: #0b0c0d;
+    --color-borde: rgba(255,255,255,0.06);
+    --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+  }
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
-  :root {
-    /* Rampa de riesgo — saturada a propósito contra el fondo oscuro */
-    --color-calma: #4fbf8f;
-    --color-calma-dim: rgba(79, 191, 143, 0.12);
-    --color-atencion: #d9b84f;
-    --color-atencion-dim: rgba(217, 184, 79, 0.12);
-    --color-aviso: #e8934f;
-    --color-aviso-dim: rgba(232, 147, 79, 0.12);
-    --color-critico: #e85d4f;
-    --color-critico-dim: rgba(232, 93, 79, 0.12);
-
-    /* Rampa de series (datos) — desaturada a propósito */
-    --color-serie-1: #6a86c8;
-    --color-serie-2: #4fa8a0;
-    --color-serie-3: #8b78c8;
-    --color-serie-4: #c8a86a;
-
-    /* Jerarquía de texto — alto contraste */
-    --color-foreground: #f7f8f8;
-    --color-muted: #b0b6bf;
-    --color-faint: #7a8088;
-
-    /* Acento de interfaz (no de dato) */
-    --color-acento: #5e6ad2;
-
-    /* Superficies */
-    --color-surface: #151618;
-    --color-surface-raised: #1a1c1e;
-    --color-surface-sunken: #0c0d0e;
-    --color-border: #2a2c2e;
-    --color-border-strong: #3a3c3e;
+  * {
+    box-sizing: border-box;
   }
 
-  html {
-    font-family: "Inter", sans-serif;
+  html,
+  body,
+  #root {
+    min-height: 100%;
   }
 
   body {
-    background-color: #0f1011;
-    color: #f7f8f8;
-    font-feature-settings: "rlig" 1, "calt" 0;
+    margin: 0;
+    background: #050607;
+    color: #f0f4f8;
+    font-family: "Space Grotesk", "Inter", ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(0, 212, 255, 0.04), transparent),
+      radial-gradient(ellipse 60% 40% at 100% 100%, rgba(124, 77, 255, 0.03), transparent);
   }
 
-  h1, h2, h3, h4, h5, h6 {
-    font-weight: 700;
-    color: #f7f8f8;
+  ::selection {
+    background: rgba(0, 212, 255, 0.12);
+    color: #f0f4f8;
   }
 
-  h1 { font-size: 1.5rem; }
-  h2 { font-size: 1.25rem; }
-  h3 { font-size: 1.125rem; }
-  h4 { font-size: 1rem; font-weight: 700; }
-
-  p { line-height: 1.6; }
-
-  a {
-    color: var(--color-acento);
-    text-decoration: underline;
-    text-decoration-offset: 4px;
+  ::scrollbar {
+    width: 8px;
+    height: 8px;
   }
-
-  input, textarea, select, button { font-family: inherit; }
-}
-
-@layer components {
-  .mono {
-    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  ::scrollbar-track {
+    background: #0b0c0d;
   }
-
-  /* Números tabulares — comparables en columna */
-  .tnum {
-    font-variant-numeric: tabular-nums;
+  ::scrollbar-thumb {
+    background: linear-gradient(180deg, #00d4ff, #7c4dff);
+    border-radius: 4px;
   }
-
-  .fuente-negrita { font-weight: 700; }
-
-  .texto-micro { font-size: 0.7rem; }
-  .texto-meta { font-size: 0.875rem; }
-  .texto-base { font-size: 1rem; }
-  .texto-lg { font-size: 1.125rem; }
-  .texto-xl { font-size: 1.25rem; }
-  .texto-2xl { font-size: 1.5rem; }
-  .texto-3xl { font-size: 1.875rem; }
-  .texto-4xl { font-size: 2.25rem; }
-
-  /* Jerarquía con CONTRASTE: principal es BLANCO PURO */
-  .texto-principal {
-    color: var(--color-foreground);
-    font-weight: 600;
+  ::scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #7c4dff, #00d4ff);
   }
-
-  .texto-secundario {
-    color: var(--color-muted);
-  }
-
-  .texto-desvanecido {
-    color: var(--color-faint);
-  }
-
-  /* Ausencia ≠ cero — visualmente distinto de un valor medido */
-  .dato-ausente {
-    color: var(--color-faint);
-    font-style: italic;
-    letter-spacing: 0.05em;
-  }
-
-  /* Riesgo — el color saturado grita contra el fondo oscuro */
-  .texto-calma { color: var(--color-calma); }
-  .texto-atencion { color: var(--color-atencion); }
-  .texto-aviso { color: var(--color-aviso); }
-  .texto-critico { color: var(--color-critico); }
-
-  .fondo-calma { background-color: var(--color-calma-dim); }
-  .fondo-atencion { background-color: var(--color-atencion-dim); }
-  .fondo-aviso { background-color: var(--color-aviso-dim); }
-  .fondo-critico { background-color: var(--color-critico-dim); }
-
-  /* Panel de dato */
-  .fondo-cuadro {
-    background-color: var(--color-surface-raised);
-    border: 1px solid var(--color-border);
-  }
-
-  .fondo-contraste {
-    background-color: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 0.75rem;
-  }
-
-  .contenedor-tarjetas {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .boton {
-    padding: 0.5rem 1rem;
-    border-radius: 0.5rem;
-    border: 1px solid var(--color-border);
-    color: var(--color-foreground);
-    font-size: 0.7rem;
-    font-weight: 700;
-    transition: background-color 0.15s;
-    cursor: pointer;
-  }
-
-  .boton:hover { background-color: var(--color-surface-raised); }
-
-  .boton-primario {
-    padding: 0.5rem 1rem;
-    border-radius: 0.5rem;
-    background-color: var(--color-acento);
-    color: #ffffff;
-    font-weight: 700;
-    border: none;
-    cursor: pointer;
-  }
-
-  .boton-primario:hover { filter: brightness(1.15); }
 }
 
 @layer utilities {
-  .sin-borde { outline: none; }
-  .no-envolver { white-space: nowrap; }
-  .truncar { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .clickeable { cursor: pointer; }
-  .no-seleccionable { user-select: none; }
-  .sin-desplazamiento { overflow: hidden; }
+  .mono {
+    font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .display {
+    font-family: "Orbitron", "Space Grotesk", sans-serif;
+    letter-spacing: 0.02em;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .glass {
+    background: rgba(17, 18, 20, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .glass-strong {
+    background: rgba(11, 12, 13, 0.85);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(0, 212, 255, 0.15);
+  }
+
+  .glow-cyan {
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.3), 0 0 40px rgba(0, 212, 255, 0.1);
+  }
+
+  .glow-violet {
+    box-shadow: 0 0 20px rgba(124, 77, 255, 0.3), 0 0 40px rgba(124, 77, 255, 0.1);
+  }
+
+  .glow-critical {
+    box-shadow: 0 0 20px rgba(255, 23, 68, 0.3), 0 0 40px rgba(255, 23, 68, 0.1);
+  }
+
+  .elevated {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  .card-shadow {
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  }
+
+  .border-glow {
+    border: 1px solid rgba(0, 212, 255, 0.15);
+  }
+
+  .gradient-text-cyan {
+    background: linear-gradient(135deg, #00d4ff, #00ffff);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .gradient-text-violet {
+    background: linear-gradient(135deg, #7c4dff, #b388ff);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .gradient-text-risk {
+    background: linear-gradient(135deg, #10b981, #ffc107, #ff1744);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .animate-pulse-glow {
+    animation: pulseGlow 3s ease-in-out infinite;
+  }
+
+  @keyframes pulseGlow {
+    0%, 100% {
+      box-shadow: 0 0 12px rgba(0, 212, 255, 0.3);
+    }
+    50% {
+      box-shadow: 0 0 28px rgba(0, 212, 255, 0.6), 0 0 48px rgba(0, 212, 255, 0.2);
+    }
+  }
+
+  .animate-scanline {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .animate-scanline::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.08) 2px,
+      rgba(0, 0, 0, 0.08) 4px
+    );
+    pointer-events: none;
+    animation: scanlineMove 8s linear infinite;
+  }
+
+  @keyframes scanlineMove {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(100%); }
+  }
+
+  .animate-count-up {
+    animation: countUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  @keyframes countUp {
+    from { opacity: 0; transform: translateY(8px) scale(0.95); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out forwards;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .shimmer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.06),
+      transparent
+    );
+    transform: translateX(-100%);
+    animation: shimmerMove 1.5s ease-in-out infinite;
+  }
+
+  @keyframes shimmerMove {
+    100% { transform: translateX(100%); }
+  }
+
+  .risk-low { color: #10b981; }
+  .risk-mid { color: #ffc107; }
+  .risk-high { color: #ff9100; }
+  .risk-critical { color: #ff1744; }
+
+  .bg-risk-low { background-color: #10b981; }
+  .bg-risk-mid { background-color: #ffc107; }
+  .bg-risk-high { background-color: #ff9100; }
+  .bg-risk-critical { background-color: #ff1744; }
+
+  .border-risk-low { border-color: #10b981; }
+  .border-risk-mid { border-color: #ffc107; }
+  .border-risk-high { border-color: #ff9100; }
+  .border-risk-critical { border-color: #ff1744; }
+
+  .dato-ausente {
+    color: #6b7280;
+    font-style: italic;
+    letter-spacing: 0.05em;
+  }
 }

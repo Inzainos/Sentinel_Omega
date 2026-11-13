@@ -1,20 +1,49 @@
 """Tests del loader SSN Mexico (sin red, DB temporal)."""
 from __future__ import annotations
 
+import importlib.util
 import sqlite3
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-from sentinel_omega.infrastructure.pipeline.ssn_catalogo import (
-    DEFAULT_MIN_MAG,
-    build_parser,
-    cargar_ssn,
-    detectar_encoding_ssn,
-    leer_catalogo_ssn,
-    make_ssnmx_id,
-    parse_ssn_time_utc,
+import pytest
+
+# `ssn_catalogo` se ARCHIVÓ el 2026-11-10 (turno 1 de tuning, en
+# `archive/2026-11-10/`; el plan decía "programar o archivar" y la
+# decisión de programarlo sigue pendiente de Elán, D12). La cobertura
+# se mantiene cargando el módulo desde su ruta archivada — sigue
+# importándose limpio (solo stdlib + `usgs_catalogo`, que sigue vivo).
+# Si el archivo archivado no está o no importa, el módulo entero se
+# salta con el motivo exacto en vez de romper la colección.
+_ARCHIVO_SSN = (
+    Path(__file__).resolve().parents[2]
+    / "archive" / "2026-11-10" / "ssn_catalogo.py"
 )
+try:
+    _spec = importlib.util.spec_from_file_location(
+        "ssn_catalogo_archivado", _ARCHIVO_SSN
+    )
+    _mod_ssn = importlib.util.module_from_spec(_spec)
+    sys.modules["ssn_catalogo_archivado"] = _mod_ssn
+    _spec.loader.exec_module(_mod_ssn)
+except (FileNotFoundError, ImportError) as _exc:
+    pytest.skip(
+        "ssn_catalogo archivado en archive/2026-11-10/ el 2026-11-10 "
+        "(decisión de programarlo pendiente de Elán, D12) y el módulo "
+        f"archivado no se importa en este checkout: {_exc}",
+        allow_module_level=True,
+    )
+else:
+    DEFAULT_MIN_MAG = _mod_ssn.DEFAULT_MIN_MAG
+    build_parser = _mod_ssn.build_parser
+    cargar_ssn = _mod_ssn.cargar_ssn
+    detectar_encoding_ssn = _mod_ssn.detectar_encoding_ssn
+    leer_catalogo_ssn = _mod_ssn.leer_catalogo_ssn
+    make_ssnmx_id = _mod_ssn.make_ssnmx_id
+    parse_ssn_time_utc = _mod_ssn.parse_ssn_time_utc
+
 from sentinel_omega.infrastructure.pipeline.usgs_catalogo import asegurar_columnas
 
 CSV_FIXTURE = """\"Catalogo de sismos - Servicio Sismologico Nacional (SSN) | UNAM - Mexico. DOI: 10.21766/SSNMX/EC/MX\"

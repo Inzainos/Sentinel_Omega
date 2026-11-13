@@ -1,3 +1,222 @@
+## 2026-10-26 (madrugada +2) — Schumann: corte diario + el dato por evento
+
+Decisión del operador: «la Schumann solo la pedimos en un corte del día
+completo, lo extraemos solo a las horas de los eventos, eliminamos el
+espectrograma de Tomsk (por ciclo) y agregamos esos detalles a los
+eventos». Medido antes: el fetch por ciclo descargaba el espectrograma
+CADA 5 min (288/día, **212 fallos en un log**) por un valor que Tomsk
+reescribe igual cada hora. Y el histórico real NO EXISTE (el hz era la
+recta fabricada; el vivo acumuló 20 lecturas reales en su vida).
+
+### Changed — el corte diario
+- `core/schumann_vivo.py::corte_diario()`: UNA descarga exitosa/día
+  (pre-ciclo, reintenta mientras Tomsk falle) → `tbl_schumann_diario`.
+  El gate anti-spam «valor repite» se apaga SOLO para el corte
+  (`novedad_requerida=False`): con 1 fila/día, «hoy también fue 2,68 %»
+  es el DATO, no ruido. El gate de imagen congelada (sha256) QUEDA.
+- `data_pipeline`: sin red — lee el valor del día (puerto `ruta_db`);
+  sin corte → rasgo sin dato (regla 8).
+- Launcher: el bloque de persistencia por ciclo se retiró (escribía el
+  mismo valor 288×/día); el corte escribe 1 fila/día vía `registrar`.
+- Salud: chip beta1 con cadencia diaria (LIVE ≤30 h, CONGELADO
+  multi-día-repite, fallback a vivo si el día no tiene corte aún).
+- `sos70-descarga.timer`: DISABLED deliberado (AGENTS.md del home
+  actualizado — no «repararlo»).
+
+### Added — Schumann POR EVENTO
+- `tbl_eventos_schumann(event_epoch, actividad_h, media_24h, n_lecturas,
+  fuente)`: cada evento M4.5+ verificado por el Juez lleva SU Schumann a
+  su hora y el comportamiento de las 24 h previas. Idempotente por
+  epoch. `enriquecer_historico()` cruza el corpus backcast contra
+  `tbl_enjambre_telemetria` por (hora, nodo): corrido una vez, enrichió
+  **1 evento no-sísmico — todo el Schumann-evento real que existe**.
+
+### Tests
+- `test_schumann_corte_diario.py` 7/7 (nuevo: una descarga/día, sin
+  señal no se inventa fila, reintento, alimenta la serie viva, evento con
+  lectura+comportamiento, idempotencia, join histórico).
+- Familia Schumann completa: **106/106**. El test del launcher se
+  actualizó al contrato NUEVO (regla 12: `corte_diario` en vez de
+  `registrar` directo).
+
+### Verificado en producción
+Primer corte real: «SCHUMANN corte diario 2026-10-26: actividad 2.68 %»;
+Loki ingesta «(sin dato: ninguno)»; chip LIVE «corte diario (una
+descarga/día)».
+
+---
+
+## 2026-10-26 (madrugada) — Filtro cimático del Padre (EVIDENCIA) + figura por evento
+
+Pedido del operador: «integrarle al padre ese filtro cimático en caso de
+encontrar una figura idéntica al pasado o similar» + «por evento se
+integraría de igual forma su figura cimática».
+
+### Measured — la calibración dio NEGATIVO (y eso decide el diseño)
+`deploy/medir_cimatica_evidencia.py`: 147 vísperas (LOO) vs 44 calmas
+contra las 177.893 figuras. **La semejanza — y hasta la identidad — de
+figura NO distingue víspera de calma**: ganancia ≤1.2× en todo el rango e
+INVERTIDA en sim alta (0.95: 0.77×; 1.0: 0.00× — el 15.9% de las calmas
+es IDÉNTICO a alguna víspera). El espacio de claves por bandas es denso.
+Cablearlo como umbral sería numerología con cara de filtro.
+
+### Added — EVIDENCIA con etiqueta honesta, no compuerta
+- `cimatica_evidencia(conn, features)`: qué vísperas empareja la figura
+  viva, con la calibración DENTRO del dict — el nulo viaja con el número.
+- `GeodynamicPadre.registrar_cimatica_evidencia()` + metadata del consenso.
+- Launcher: cálculo por ciclo con el features vivo → log «PADRE CIMÁTICA:
+  … CONTEXTO, no predicción» + `geo.metadata`.
+- `juez_cycle_register`: la fila del padre lleva `cimatica_evidencia` en
+  `detalles_json` — cada predicción viaja con su figura.
+
+### Added — integración por evento (la biblioteca ya no es estática)
+- `integrar_evento_biblioteca(conn, eventos)`: cuando el Juez verifica un
+  M4.5+, las figuras de su víspera cruzan a la biblioteca (n_eventos+1
+  por evento y figura, dedup interno). Idempotente por EPISODIO
+  (`tbl_cimatica_bib_eventos`). Cableado tras `retroetiquetar_patrones`.
+- Índice único `(clave_figura, event_class)` en `ensure_biblioteca`
+  (con log si una DB legada tiene duplicados; `construir_biblioteca` lo
+  recupera tras reconstruir).
+
+### Added — la evidencia a la superficie que el operador lee
+- `plantillas_concilio.snapshot_2h` calcula la evidencia (figura viva =
+  último patrón cimático) y la agrega al snapshot → **P2H**: «⚛️ Figura
+  del Padre: similar/IDÉNTICA a víspera de … — contexto, no predicción»
+  (sin empareje no hay línea); **MiniApp/`/api/estado-vivo`**:
+  `cimatica_evidencia` en el JSON (escaneo ~3 s primera vez por clave,
+  luego caché: 8 s → 1,2 s medido).
+- `test_plantillas_evidencia.py` 4/4.
+
+### Fixed — bug propio cazado por el warning visible
+`_scan_biblioteca` leía por nombre de columna; la conexión del launcher
+viene sin `row_factory` (tuplas) → TypeError en el primer ciclo. Acceso
+posicional (el SELECT lo controla el módulo).
+
+### Tests
+`test_biblioteca_cimatica.py` 13/13 + 2 del registro del Juez = 21
+verdes. Producción: «PADRE CIMÁTICA» por ciclo, sin excepciones.
+
+---
+
+## 2026-10-25 (medianoche) — Cierre de clase: credenciales fuera de los logs
+
+La fuga medida el 2026-10-25: **742 apariciones de secretos del `.env` en
+6 logs** (604× `appid=` de OWM, 44× `api_key=` de NASA NEO, 0 tokens de
+bot) — `logger.error(f"...: {e}")` escribiendo la URL que la excepción de
+`requests` trae. La lección del 2026-09-27 (Telegram, 195 filtraciones al
+log rotado y de ahí a un repo público) aplicaba igual: rotar no arregla la
+clase; **se enmascara por patrón**.
+
+### Added — `infrastructure/api/_redact.py::sin_credenciales()`
+- Sanitizador compartido: query-params de credencial (`appid`, `api_key`,
+  `client_secret`, `token`, `secret`, `password`, `signature`, …,
+  case-insensitive) + los dos patrones de token de bot históricos
+  (`<8-10 dígitos>:<30+>` y `/bot…/`). Enmascarar de más es inofensivo;
+  de menos, es una fuga.
+- `telegram.sin_token` delega en él: mismo contrato, una sola fuente de
+  verdad (y fuera su código muerto posterior al return).
+
+### Changed — barrido de clase (68 sitios)
+- 24 en `infrastructure/api/` + 44 en `infrastructure/pipeline/`:
+  TODAS las de fetch-failure envueltas con `sin_credenciales(e)`, no solo
+  las que hoy llevan llave — la clase, no la lista.
+- Escrubado in place de los 6 logs con los valores reales del `.env`
+  (742 → 0), sin imprimirlos.
+
+### Tests
+- `test_redact.py` 8/8 (nuevo): la fuga exacta de OWM, api_key de NASA,
+  forma de token, token de 36+ chars, `/bot/` no canónico, case-insensitive,
+  mensaje limpio intacto, delegación de `sin_token`.
+- Suite completa: 1.339, solo los 2 rojos deliberados documentados;
+  post-barrido conectores+pipeline: 73 verdes. `py_compile` sobre todo lo
+  tocado (cazó un import insertado dentro de un import multilínea en
+  `data_pipeline.py` — corregido antes de reiniciar).
+
+---
+
+## 2026-10-25 (noche) — Biblioteca de figuras construida + tablero honesto
+
+La «Biblioteca de figuras» del tablero llevaba «—» desde su diseño:
+`tbl_cimatica_biblioteca` nunca se creó ni pobló — el único escritor
+(`ensure_biblioteca`) corre en la conexión READ-ONLY del dashboard, donde
+falla en silencio by-design, y ningún paso del pipeline la construía.
+
+### Added — `core/firmas/biblioteca_cimatica.py::construir_biblioteca()`
+- Poblador real: recorre las MISMAS anclas que `entrenar_cimatica`
+  (sísmicos ≥2.5 de `tbl_historico_sismico_raw` + no sísmicos) y agrega
+  **(clave_figura, event_class) → n_eventos** con la MISMA extracción
+  (`extraer_features_ventana`): vísperas históricas y figura viva caen en
+  las mismas claves y la comparación de `consultar()` es real.
+- **n_eventos cuenta EVENTOS, no avistamientos** (regla 11): la
+  `frecuencia` de `tbl_cimatica_patrones` mezcla vísperas de entrenamiento
+  con recurrencias vivas sin evento — usarla contaría calma como víspera.
+- `figura_json` = telemetría completa de la última víspera (payload
+  comparable). DESCRIPTIVA: el lift frente a calma lo decide el Juez.
+- Idempotente (DELETE+INSERT): la tabla es DERIVADA de los eventos.
+- Integrada al final de `entrenar_cimatica` — se reconstruye sola en cada
+  entrenamiento/rebuild. Wrapper standalone:
+  `deploy/construir_biblioteca_cimatica.py` (medido: 9 ms/evento, ~28 min
+  el corpus de 192k+1.2k eventos).
+- Tests: `test_biblioteca_cimatica.py` 8/8 (eventos vs avistamientos,
+  figuras distintas, sin-datos contado, idempotencia, no sísmicos con su
+  clase, figura_json completo, lookup más allá del top-300, match exacto).
+
+### Fixed — el lookup de biblioteca (dos bugs latentes, visibles al poblarla)
+- **`consultar()` LIMIT 300 muerto a escala**: el escaneo miraba solo el
+  top-300 por n_eventos; con 177.893 figuras la clave viva casi nunca cae
+  ahí → 0 hits SIEMPRE. Ahora escaneo completo (~3 s medidos) con caché
+  por (clave viva, tamaño de biblioteca): 7 s primera llamada por clave,
+  0,65 s cacheadas; la clave solo cambia cada ciclo.
+- **`/api/cimatica/ahora` machacaba la clave viva con una vacía**: leía
+  `clave_figura` del veredicto de beta1, que NO existe en sus
+  `detalles_json` (medido), sobreescribiendo la clave real del último
+  snapshot cimático. La figura viva ahora es el último patrón (clave +
+  telemetría completa); beta1 solo manda si su veredicto trae figura.
+- Verificado en producción: lookup vivo → 20 similares, best 0.4909
+  (SISMO_M6), coincidente con la medición directa del escaneo.
+
+### Fixed — tablero (front + API)
+- **Jupiter fuera de las superficies activas**: `BOTS_RETIRADOS` en
+  `api.py` filtra `/api/bots` (items, dict de voto, vía notificador) y
+  `/api/consenso`. La historia append-only de la DB no se toca — el bot
+  retirado (2026-10-18) simplemente ya no aparece como si votara.
+- **Bz en Señales**: el front leía `bz_nT`, campo que el API nunca sirvió;
+  el real es `bz_promedio`. El dato siempre estuvo — era el instrumento.
+- **KPI Biblioteca de figuras**: distingue «no construida» de «0» de
+  número usando `biblioteca_presente` (contrato del README del tablero;
+  regla 3: lo no construido se ve distinto de lo construido en cero).
+- **Menú**: Presentación primera pestaña (pedido del operador); la raíz
+  `/` sigue abriendo Principal por diseño documentado de `App.tsx`.
+
+---
+
+## 2026-10-25 (noche) — IERS LOD migrado de datacenter.iers.org a USNO/Maia
+
+`datacenter.iers.org` (hospedado por BKG) caído para clientes externos
+desde el 2026-10-24: el WAF responde **400 a TODO** — a los dos CSV, a la
+raíz del dominio y aun con User-Agent de navegador («Request Rejected»,
+página en alemán del Bundesamt). ~90 fallos acumulados por ciclo del
+launcher antes del fix.
+
+### Changed — `infrastructure/api/geophysical.py`
+- URLs: `finals2000A.daily.csv`/`.all.csv` (CSV punto y coma) →
+  **`maia.usno.navy.mil/ser7/finals.daily`** y **`finals.all`** — la fuente
+  primaria del Bulletin A (USNO), mismo dato, formato **ancho fijo**.
+- Parser reescrito según `ser7/readme.finals`: MJD cols 8-15, LOD cols
+  80-86 (ms). La cola de predicción lejana trae LOD vacío («NOT ALWAYS
+  FILLED») y **se salta, no se inventa** (regla 2).
+- Schema de salida idéntico (`date`, `lod_ms`); `historico=True` sigue
+  cubriendo 1973→hoy para el backfill de `tbl_astronomia_cinematica`.
+
+### Verificado (Real Cero)
+- Vivo: 89 registros, último 2026-10-24 (frescura real), LOD −0.567..1.725 ms.
+- Histórico: 19.651 registros, 1973-01-02 → 2026-10-21, cola de predicción saltada.
+- `test_fetch_lod_series` reescrito al formato ancho fijo real (incluye la
+  línea de LOD vacío); `test_pipeline.py` 51/51. Launcher reiniciado →
+  `Fetched 89 LOD records from IERS` en el primer ciclo.
+
+---
+
 ## 2026-10-21 (tarde) — GO: cimática espectral integrada como EVIDENCIA viva
 
 Adenda del audit en `estado/cimatica_firmas/AUDIT_cimatica_firmas_2026-10-21.md`

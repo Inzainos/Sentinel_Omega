@@ -2,10 +2,10 @@ defmodule VigiaSentinel.Config do
   @moduledoc false
 
   @defaults [
-    log_path: "/home/deamon/workspaces/sentinel_omega/data/sentinel_omega.log",
-    env_path: "/home/deamon/workspaces/sentinel_omega/deploy/.env",
-    state_path: "/home/deamon/workspaces/sentinel_omega/sidecar/state.json",
-    log_path_vigia: "/home/deamon/workspaces/sentinel_omega/sidecar/logs/vigia_sentinel.log",
+    log_path: "/home/deamon/Sentinel_Omega/sentinel_omega/data/sentinel_omega.log",
+    env_path: "/home/deamon/Sentinel_Omega/sentinel_omega/.env",
+    state_path: "/home/deamon/Sentinel_Omega/sentinel_omega/sidecar/state.json",
+    log_path_vigia: "/home/deamon/Sentinel_Omega/sentinel_omega/sidecar/logs/vigia_sentinel.log",
     check_interval_minutes: 5,
     stale_after_minutes: 15,
     realert_minutes: 120,

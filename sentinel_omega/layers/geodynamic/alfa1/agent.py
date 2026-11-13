@@ -47,6 +47,18 @@ class Alfa1Agent(BaseAgent):
                 ONNXBotInference, ONNXModelLoader,
             )
             cfg = onnx_config.alfa1
+            if not cfg.enabled:
+                # Decisión D9 (2026-11-12): alfa1 apagado por Elán (AUC 0.478,
+                # WATCH 0.69 en calma). La compuerta compartida `try_load_onnx`
+                # honra `enabled`, pero este cargador propio NO la honraba:
+                # cargaba la sesión y el log decía "rama ML activa" con el
+                # modelo ya apagado en el voto. Sin este retorno, el flag no
+                # es la única fuente de verdad. Con él, el agente no carga
+                # el modelo y vota solo la regla de umbral de Bz.
+                self.logger.info(
+                    "Alfa-1: ONNX apagado por config (D9) — rama de umbral de Bz activa"
+                )
+                return
             loader = ONNXModelLoader(onnx_config.runtime,
                                      models_dir=onnx_config.models_dir)
             session = loader.load_model(cfg)

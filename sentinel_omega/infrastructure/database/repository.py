@@ -7,9 +7,11 @@ All timestamps are Unix epoch floats (time.time()).
 
 import json
 import logging
+import math
 import sqlite3
 import threading
 import time
+from contextlib import contextmanager
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -17,6 +19,53 @@ from typing import Any, Dict, List, Optional, Tuple
 from sentinel_omega.infrastructure.database.schema import get_connection
 
 logger = logging.getLogger(__name__)
+
+
+# ── Transacción por ciclo (Turno 2, 2026-11-10) ──────────────────────
+# Antes: cada método de escritura hacía su propio commit() (~13 por
+# ciclo, uno por insert + los LOCF). Ahora los métodos solo commitean
+# fuera de un bloque defer_commit(); dentro del bloque, UN solo commit
+# al final del ciclo. El estado es thread-local a nivel de MÓDULO (no
+# de instancia) porque el ciclo escribe con DOS instancias en DOS
+# hilos: el pipeline (worker "cycle-worker": LOCF + _persistir_operativa)
+# y el launcher (hilo principal: _log_cycle_summary). Cada hilo tiene
+# sus propias conexiones (threading.local), así que el ciclo hace
+# exactamente 1 commit por hilo (2 en total), no 1 literal: un solo
+# commit para los dos hilos exigiría compartir una conexión entre hilos
+# y rompería check_same_thread.
+_TX = threading.local()
+
+
+def _defer_depth() -> int:
+    return getattr(_TX, "depth", 0)
+
+
+def _registrar_conn(conn: sqlite3.Connection) -> None:
+    conns = getattr(_TX, "conns", None)
+    if conns is None:
+        conns = set()
+        _TX.conns = conns
+    conns.add(conn)
+
+
+def _finito_o_none(x: Any) -> Optional[float]:
+    """float finito o None: NaN/+-inf nunca se persisten (T-2, 2026-11-10)."""
+    try:
+        v = float(x)
+    except (TypeError, ValueError):
+        return None
+    return v if math.isfinite(v) else None
+
+
+def _sin_nan(o: Any) -> Any:
+    """NaN/+-inf -> None, recursivo (listas/dicts/tuplas)."""
+    if isinstance(o, float):
+        return o if math.isfinite(o) else None
+    if isinstance(o, dict):
+        return {k: _sin_nan(v) for k, v in o.items()}
+    if isinstance(o, (list, tuple)):
+        return [_sin_nan(v) for v in o]
+    return o
 
 
 class SentinelRepository:
@@ -35,6 +84,7 @@ class SentinelRepository:
         if conn is None:
             conn = get_connection(self._db_path)
             self._local.conn = conn
+            _registrar_conn(conn)
         return conn
 
     def _execute(self, sql: str, params: tuple = ()) -> sqlite3.Cursor:
@@ -42,7 +92,54 @@ class SentinelRepository:
 
     def _executemany(self, sql: str, params_list: List[tuple]) -> None:
         self._conn.executemany(sql, params_list)
+        self._commit()
+
+    def commit(self) -> None:
+        """Commit explícito de la conexión de este hilo (p. ej. scripts)."""
         self._conn.commit()
+
+    def _commit(self) -> None:
+        """Commit de un método de escritura, salvo dentro de defer_commit().
+
+        Fuera del ciclo se comporta como antes (cada escritura persiste
+        al momento: scripts, API, mantenimiento). Dentro del ciclo el
+        commit se difiere al final del bloque.
+        """
+        if _defer_depth() == 0:
+            self._conn.commit()
+
+    @classmethod
+    @contextmanager
+    def defer_commit(cls):
+        """Agrupa las escrituras del ciclo en un solo commit por hilo.
+
+        Al salir del bloque commitea TODAS las conexiones registradas
+        en este hilo (la del launcher y la del pipeline son distintas).
+        Anidable: solo commitea al salir del bloque exterior.
+        Commitea también si el bloque sale por excepción: hoy las
+        escrituras parciales ya persistían método a método, así que
+        hacer rollback cambiaría la semántica de fallo; lo que cambia
+        aquí es el número de fsyncs, no qué sobrevive a un fallo.
+        Si el commit falla (p. ej. candado), se loguea y no se enmascara
+        la excepción original.
+        """
+        _TX.depth = _defer_depth() + 1
+        try:
+            yield
+        finally:
+            _TX.depth = max(0, _defer_depth() - 1)
+            if _TX.depth == 0:
+                cls.commit_all()
+
+    @classmethod
+    def commit_all(cls) -> None:
+        """Un commit por cada conexión registrada en este hilo."""
+        conns = getattr(_TX, "conns", None) or ()
+        for conn in list(conns):
+            try:
+                conn.commit()
+            except Exception as exc:  # noqa: BLE001 — no tumbar el ciclo por el commit
+                logger.warning("commit_all: no se pudo commitear una conexión (%s)", exc)
 
     # ── Precursores Cósmicos ──────────────────────────────────────
 
@@ -72,7 +169,7 @@ class SentinelRepository:
              schumann_hz, schumann_activity, fase_lunar,
              presion_hpa, fantasma, nivel_riesgo),
         )
-        self._conn.commit()
+        self._commit()
         return cur.lastrowid
 
     def get_precursores_cosmicos(
@@ -129,7 +226,7 @@ class SentinelRepository:
             (node_id, nombre, lat, lon, tipo, conductividad,
              energia, saturacion, region),
         )
-        self._conn.commit()
+        self._commit()
 
     def bulk_upsert_nodos(self, nodos: List[Dict]) -> int:
         self._executemany(
@@ -166,7 +263,7 @@ class SentinelRepository:
             WHERE node_id = ?""",
             (energia, saturacion, node_id),
         )
-        self._conn.commit()
+        self._commit()
 
     # ── Histórico Sísmico ─────────────────────────────────────────
 
@@ -190,12 +287,14 @@ class SentinelRepository:
             (event_id, timestamp, lat, lon, depth_km, magnitude,
              mag_type, region, source),
         )
-        self._conn.commit()
+        self._commit()
 
     def bulk_insert_sismos(self, sismos: List[Dict]) -> int:
-        before = self._execute(
-            "SELECT COUNT(*) FROM TBL_HISTORICO_SISMICO"
-        ).fetchone()[0]
+        # Turno 2: total_changes en vez de 2x COUNT(*) (mismo patrón que
+        # insert_frp_detecciones). total_changes cuenta también los
+        # cambios sin commitear, así que el delta es exacto dentro y
+        # fuera de defer_commit().
+        antes = self._conn.total_changes
         self._executemany(
             """INSERT OR IGNORE INTO TBL_HISTORICO_SISMICO
             (event_id, timestamp, lat, lon, depth_km, magnitude,
@@ -209,10 +308,7 @@ class SentinelRepository:
                 for s in sismos
             ],
         )
-        after = self._execute(
-            "SELECT COUNT(*) FROM TBL_HISTORICO_SISMICO"
-        ).fetchone()[0]
-        return after - before
+        return self._conn.total_changes - antes
 
     def get_sismos(
         self,
@@ -265,7 +361,7 @@ class SentinelRepository:
             (ts, cycle_id, tipo, display_name, station, lat, lon,
              confidence, json.dumps(values or {}), wall_name),
         )
-        self._conn.commit()
+        self._commit()
         return cur.lastrowid
 
     def get_detecciones(
@@ -317,7 +413,7 @@ class SentinelRepository:
              fantasma, nivel_riesgo, precursors_count, types_json,
              muro_walls_active, int(muro_breach), alerts_dispatched),
         )
-        self._conn.commit()
+        self._commit()
         return cur.lastrowid
 
     def get_ciclos(self, limit: int = 50) -> List[Dict]:
@@ -357,7 +453,7 @@ class SentinelRepository:
              int(wall_states.get("FINANCIERO/SOCIAL", False)),
              json.dumps(active_types)),
         )
-        self._conn.commit()
+        self._commit()
         return cur.lastrowid
 
     def get_muro_breaches(self, limit: int = 50) -> List[Dict]:
@@ -570,7 +666,7 @@ class SentinelRepository:
             (timestamp_blk, zona, coverage_score, thermal_anomalies,
              clear_passes, total_passes, revisit_days),
         )
-        self._conn.commit()
+        self._commit()
 
     # ── alfa2: detecciones FRP completas (Sentinel-3 SLSTR L2) ──────
 
@@ -604,7 +700,7 @@ class SentinelRepository:
             "CREATE INDEX IF NOT EXISTS idx_frp_det_zona_ts "
             "ON tbl_frp_detecciones(zona, ts_utc)"
         )
-        self._conn.commit()
+        self._commit()
         self._local.frp_ok = True
 
     def insert_frp_detecciones(self, detecciones: List[Dict[str, Any]]) -> int:
@@ -624,7 +720,7 @@ class SentinelRepository:
             f"VALUES ({', '.join('?' * len(cols))})",
             filas,
         )
-        self._conn.commit()
+        self._commit()
         return self._conn.total_changes - antes
 
     def insert_delta_cross(
@@ -648,15 +744,18 @@ class SentinelRepository:
             _comp = float(data_completeness or 0.0)
         except (TypeError, ValueError):
             _comp = 0.0
-        try:
-            _couplings = [
-                float(cross_coupling or 0.0),
-                float(geomagnetic_coupling or 0.0),
-                float(schumann_coupling or 0.0),
-            ]
-        except (TypeError, ValueError):
-            _couplings = [0.0, 0.0, 0.0]
-        if _comp <= 0.0 or (all(abs(c) < 1e-12 for c in _couplings) and _comp < 0.5):
+        if not math.isfinite(_comp):
+            _comp = 0.0
+        # T-2 (2026-11-10): filtro anti-basura con math.isnan explicito.
+        # `abs(nan) < 1e-12` es False, asi que un NaN pasaba el filtro y
+        # llegaba a la tabla / al LOCF (delta guardaba "cross_coupling": NaN).
+        # NaN/+-inf -> None: el acoplamiento sin dato va NULL, nunca NaN.
+        _couplings = [
+            _finito_o_none(cross_coupling),
+            _finito_o_none(geomagnetic_coupling),
+            _finito_o_none(schumann_coupling),
+        ]
+        if _comp <= 0.0 or (all(c is None or abs(c) < 1e-12 for c in _couplings) and _comp < 0.5):
             import logging as _logging
             _logging.getLogger(__name__).warning(
                 "refusing junk delta_cross insert completeness=%s couplings=%s ts=%s",
@@ -665,7 +764,7 @@ class SentinelRepository:
             return
         if _comp < 0.5 and (regime_label or "") == "EQUILIBRIUM":
             regime_label = "INCOMPLETE"
-            confidence = min(float(confidence or 0.0), 0.2)
+            confidence = min(_finito_o_none(confidence) or 0.0, 0.2)
         self._execute(
             "INSERT OR REPLACE INTO tbl_delta_cross "
             "(timestamp_blk, cross_coupling, geomagnetic_coupling, "
@@ -673,12 +772,15 @@ class SentinelRepository:
             " regime_label, confidence, data_completeness, "
             " geo_kp_max_3d, geo_storm_active, geo_schumann_deviation) "
             "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-            (timestamp_blk, cross_coupling, geomagnetic_coupling,
-             schumann_coupling, sentiment_coupling, composite_score,
-             regime_label, confidence, data_completeness,
-             geo_kp_max_3d, geo_storm_active, geo_schumann_deviation),
+            (timestamp_blk, _couplings[0], _couplings[1],
+             _couplings[2], _finito_o_none(sentiment_coupling),
+             _finito_o_none(composite_score),
+             regime_label, _finito_o_none(confidence),
+             _finito_o_none(data_completeness),
+             _finito_o_none(geo_kp_max_3d), geo_storm_active,
+             _finito_o_none(geo_schumann_deviation)),
         )
-        self._conn.commit()
+        self._commit()
 
     # ── Helpers ───────────────────────────────────────────────────
 
@@ -696,9 +798,9 @@ class SentinelRepository:
     def _locf_default(o: Any) -> Any:
         """numpy array/escalar → tipo nativo. Preserva el valor real."""
         if hasattr(o, "tolist"):
-            return o.tolist()
+            return _sin_nan(o.tolist())
         if hasattr(o, "item"):
-            return o.item()
+            return _sin_nan(o.item())
         raise TypeError(f"no serializable: {type(o).__name__}")
 
     def save_locf(self, source_key: str, payload: Dict[str, Any]) -> None:
@@ -711,8 +813,11 @@ class SentinelRepository:
         omitidos: List[str] = []
         for k, v in payload.items():
             try:
-                json.dumps(v, default=self._locf_default)
-                limpio[k] = v
+                # T-2 (2026-11-10): NaN -> None ANTES de serializar;
+                # allow_nan=False abajo impide que un NaN vuelva a colarse.
+                v_limpio = _sin_nan(v)
+                json.dumps(v_limpio, default=self._locf_default, allow_nan=False)
+                limpio[k] = v_limpio
             except (TypeError, ValueError):
                 omitidos.append(str(k))
         if not limpio:
@@ -723,9 +828,9 @@ class SentinelRepository:
             ON CONFLICT(source_key) DO UPDATE SET
                 payload_json = excluded.payload_json,
                 updated_at   = excluded.updated_at""",
-            (source_key, json.dumps(limpio, default=self._locf_default), time.time()),
+            (source_key, json.dumps(limpio, default=self._locf_default, allow_nan=False), time.time()),
         )
-        self._conn.commit()
+        self._commit()
         if omitidos:
             logger.debug("LOCF %s: omitidas no serializables %s", source_key, omitidos)
 
@@ -750,5 +855,8 @@ class SentinelRepository:
     def close(self) -> None:
         conn = getattr(self._local, "conn", None)
         if conn is not None:
+            conns = getattr(_TX, "conns", None)
+            if conns is not None:
+                conns.discard(conn)
             conn.close()
             self._local.conn = None

@@ -10,9 +10,9 @@ StartLimitBurst=5
 
 [Service]
 Type=simple
-WorkingDirectory=%h/workspaces
-EnvironmentFile=-%h/workspaces/deploy/.env
-ExecStart=%h/workspaces/.venv/bin/python -m sentinel_omega.infrastructure.watchdog.network_watchdog
+WorkingDirectory=/home/deamon/Sentinel_Omega
+EnvironmentFile=/home/deamon/.env.deamon
+ExecStart=/home/deamon/.venv_unified/bin/python -m sentinel_omega.infrastructure.watchdog.network_watchdog
 Restart=always
 RestartSec=30
 Nice=10

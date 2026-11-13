@@ -103,7 +103,13 @@ def test_migracion_agrega_columnas_sin_borrar(conn):
 def test_el_launcher_ya_no_tiene_tope_y_usa_el_modulo():
     fuente = inspect.getsource(launcher)
     assert not hasattr(launcher, "SCHUMANN_LOCF_HORAS")
-    assert "schumann_vivo.registrar" in fuente
+    # Contrato NUEVO (corte diario, 2026-10-26): el launcher ya no
+    # persiste Schumann por ciclo (schumann_vivo.registrar directo) —
+    # hace el CORTE DIARIO pre-ciclo, y es el módulo quien llama a
+    # registrar por dentro (1 fila/día). El fetch por ciclo se retiró:
+    # 288 descargas/día de un valor que Tomsk reescribe igual cada hora.
+    assert "schumann_vivo.corte_diario" in fuente
+    assert "schumann_vivo.registrar(" not in fuente
 
 
 def test_el_placeholder_de_libro_sigue_reconociendose():

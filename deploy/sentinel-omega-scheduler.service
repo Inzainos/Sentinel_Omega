@@ -4,9 +4,9 @@ After=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=__REPO_DIR__
-EnvironmentFile=-__REPO_DIR__/deploy/.env
-ExecStart=__REPO_DIR__/.venv/bin/python -m sentinel_omega.infrastructure.pipeline.scheduler_reportes
+WorkingDirectory=/home/deamon/Sentinel_Omega
+EnvironmentFile=/home/deamon/.env.deamon
+ExecStart=/home/deamon/.venv_unified/bin/python -m sentinel_omega.infrastructure.pipeline.scheduler_reportes
 Restart=on-failure
 RestartSec=60
 

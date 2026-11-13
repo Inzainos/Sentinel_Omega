@@ -4,9 +4,9 @@ After=network-online.target
 
 [Service]
 Type=oneshot
-WorkingDirectory=__REPO_DIR__
-EnvironmentFile=-__REPO_DIR__/deploy/.env
-ExecStart=__REPO_DIR__/.venv/bin/python -m sentinel_omega.launcher --disciplina
+WorkingDirectory=/home/deamon/Sentinel_Omega
+EnvironmentFile=/home/deamon/.env.deamon
+ExecStart=/home/deamon/.venv_unified/bin/python -m sentinel_omega.launcher --disciplina
 Nice=10
 
 # Sin [Install]: es una tarea que se corre a mano. Un `enable` la lanzaría en

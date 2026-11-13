@@ -36,7 +36,12 @@ from sentinel_omega.core.features_onnx import BOT_DIMS, FEATURE_ORDER
 #     ciclos, contra 0,1663 de alfa1. Cinco bots alarmaron el 100 % de los
 #     ciclos dos días, con ganancia de Molchan 0,81x --- peor que el azar.
 #     Ver `tests/test_modelos_constantes.py` y la nota de `onnx_config`.
-APAGADOS_A_PROPOSITO = {"alfa2", "beta1", "beta2", "delta", "loki", "omega"}
+#
+#   alfa1 (2026-11-12, D9, decisión de Elán) — variaba (0,1663) pero su AUC
+#     0,478 está POR DEBAJO del azar y votaba WATCH 0,69 en calma: ruido con
+#     peso. Vota por REGLA como los otros 6. Reentrenar solo después de
+#     resolver 22 (fuente de Kp) y 26 (re-etiquetado).
+APAGADOS_A_PROPOSITO = {"alfa1", "alfa2", "beta1", "beta2", "delta", "loki", "omega"}
 
 
 def test_la_config_conoce_los_ocho_modelos():
@@ -150,3 +155,33 @@ def test_el_archivo_del_apagado_sigue_en_disco_y_con_su_dimension():
         s = ort.InferenceSession(str(ruta), providers=["CPUExecutionProvider"])
         assert dimension_de_entrada(s) == BOT_DIMS[bot], (
             f"{bot}: el archivo en disco no cuadra con el vector")
+
+
+def test_alfa1_no_carga_sesion_con_enabled_false():
+    """D9 (2026-11-12): el cargador propio de alfa1 honra `enabled=False`.
+
+    La compuerta compartida `try_load_onnx` honra el flag, pero
+    `Alfa1Agent._try_load_onnx` cargaba la sesión igual y el log decía
+    "rama ML activa" con el modelo ya apagado en el voto. El archivo .onnx
+    existe en disco (test anterior), así que sin la compuerta este test
+    cargaría la sesión: es un test de la compuerta, no de la ausencia
+    del archivo.
+    """
+    from sentinel_omega.layers.geodynamic.alfa1.agent import Alfa1Agent
+
+    assert onnx_config.alfa1.enabled is False
+    agent = Alfa1Agent()
+    assert agent._model is None
+    assert agent._inference is None
+
+
+def test_alfa1_carga_sesion_con_enabled_true(monkeypatch):
+    """Control positivo de la compuerta: con enabled=True el cargador propio
+    sí carga la sesión (el archivo existe). Sin este control, el test
+    anterior no distinguiría "compuerta" de "cargador roto"."""
+    from sentinel_omega.layers.geodynamic.alfa1.agent import Alfa1Agent
+
+    monkeypatch.setattr(onnx_config.alfa1, "enabled", True)
+    agent = Alfa1Agent()
+    assert agent._model is not None
+    assert agent._inference is not None

@@ -5,9 +5,9 @@ set -e
 
 # repo, ruta, rama
 declare -A ENTORNOS=(
-  ["PROD"]="/home/deamon/workspaces:main"
-  ["DEV"]="/home/deamon/workspaces-dev:dev"
-  ["TEST"]="/home/deamon/workspaces-test:test"
+  ["PROD"]="/home/deamon/Sentinel_Omega:main"
+  ["DEV"]="/home/deamon/Sentinel_Omega-dev:dev"
+  ["TEST"]="/home/deamon/Sentinel_Omega-test:test"
 )
 
 for NOMBRE in "${!ENTORNOS[@]}"; do

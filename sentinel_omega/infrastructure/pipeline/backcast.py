@@ -32,6 +32,7 @@ import pandas as pd
 import requests
 
 from sentinel_omega.core.shared.geometria_uvg import MATRIZ_UVG_125, nodo_mas_cercano
+from sentinel_omega.infrastructure.api._redact import sin_credenciales
 
 logging.basicConfig(
     level=logging.INFO,
@@ -256,7 +257,7 @@ def extraer_nasa_omni_real(year: int) -> pd.DataFrame:
         return df[["fecha", "bz_promed", "sw_speed", "p_flux", "kp_val",
                    "p_density"]].dropna(subset=["fecha"])
     except Exception as e:
-        logger.error(f"NASA OMNI fetch failed for {year}: {e}")
+        logger.error(f"NASA OMNI fetch failed for {year}: {sin_credenciales(e)}")
         return pd.DataFrame()
 
 
@@ -297,7 +298,7 @@ def extraer_sismos_usgs_real(year: int) -> pd.DataFrame:
         keep = [c for c in cols if c in df.columns]
         return df[keep].copy()
     except Exception as e:
-        logger.error(f"USGS seismic fetch failed for {year}: {e}")
+        logger.error(f"USGS seismic fetch failed for {year}: {sin_credenciales(e)}")
         return pd.DataFrame()
 
 
@@ -309,7 +310,7 @@ def extraer_schumann_real(year: int) -> pd.DataFrame:
             df = pd.read_csv(path_local, parse_dates=["timestamp"])
             return df[["timestamp", "frecuencia_fundamental_hz"]]
         except Exception as e:
-            logger.warning(f"Schumann local file error for {year}: {e}")
+            logger.warning(f"Schumann local file error for {year}: {sin_credenciales(e)}")
     return pd.DataFrame()
 
 
@@ -375,7 +376,7 @@ def extraer_desgasificacion_volcanica() -> pd.DataFrame:
         logger.info(f"  MSVOLSO2L4: {len(df)} degassing events ({latest})")
         return df[["volcano", "lat", "lon", "fecha", "type", "vei", "so2_kt"]]
     except Exception as e:
-        logger.error(f"MSVOLSO2L4 fetch failed: {e}")
+        logger.error(f"MSVOLSO2L4 fetch failed: {sin_credenciales(e)}")
         return pd.DataFrame()
 
 
@@ -405,7 +406,7 @@ def extraer_btc_yahoo(year_ini: int = 2014, year_end: int = YEAR_END) -> pd.Data
         logger.info(f"  Yahoo BTC: {len(df)} daily records")
         return df
     except Exception as e:
-        logger.error(f"Yahoo BTC fetch failed: {e}")
+        logger.error(f"Yahoo BTC fetch failed: {sin_credenciales(e)}")
         return pd.DataFrame()
 
 
@@ -633,7 +634,7 @@ def ejecutar_bloque_anual(
         logger.info(f"  Year {year} committed successfully.")
     except Exception as e:
         conn.rollback()
-        logger.error(f"  Transaction aborted for {year}: {e}")
+        logger.error(f"  Transaction aborted for {year}: {sin_credenciales(e)}")
 
 
 def _safe_float(val) -> Optional[float]:

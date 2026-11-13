@@ -240,6 +240,17 @@ def entrenar_cimatica(
         _procesar(ts, id_nodo, clase)
 
     conn.commit()
+    # La biblioteca de figuras es DERIVADA de los mismos eventos: se
+    # reconstruye al final de cada entrenamiento para no divergir de
+    # tbl_cimatica_patrones (misma extracción, mismas claves).
+    try:
+        from sentinel_omega.core.firmas.biblioteca_cimatica import (
+            construir_biblioteca,
+        )
+        bib = construir_biblioteca(conn)
+        logger.info(f"  Biblioteca de figuras tras entrenamiento: {bib}")
+    except Exception as e:  # noqa: BLE001 — el entrenamiento ya está hecho
+        logger.warning("Biblioteca de figuras no construida: %s", e)
     logger.info(f"Entrenamiento cimático completo: {stats}")
     conn.close()
     return stats

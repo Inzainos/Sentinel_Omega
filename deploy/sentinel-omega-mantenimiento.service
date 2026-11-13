@@ -10,13 +10,13 @@ Type=oneshot
 # sesión, así que sus archivos (DB, modelos, logs) son suyos por definición.
 # La dispara su timer (WantedBy=timers.target); la vieja unit de SISTEMA en
 # /etc quedó obsoleta y debe deshabilitarse una vez con sudo (ver install.sh).
-WorkingDirectory=__REPO_DIR__
-EnvironmentFile=-__REPO_DIR__/deploy/.env
+WorkingDirectory=/home/deamon/Sentinel_Omega
+EnvironmentFile=/home/deamon/.env.deamon
 # EN VIVO por decisión del operador (2026-09-30): el aprendizaje incremental y
 # el volcado de telemetría son el propósito de esta corrida. Desde esa fecha
 # --dry-run es REAL (bloquea TODAS las escrituras de --disciplina/--barrido);
 # NO volver a añadirlo aquí salvo que la nocturna deba simular a propósito.
-ExecStart=__REPO_DIR__/.venv/bin/python sentinel_omega/launcher.py --disciplina --barrido
+ExecStart=/home/deamon/.venv_unified/bin/python sentinel_omega/launcher.py --disciplina --barrido
 Nice=10
 IOSchedulingClass=best-effort
 IOSchedulingPriority=7

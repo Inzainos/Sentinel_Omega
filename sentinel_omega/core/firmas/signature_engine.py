@@ -14,6 +14,17 @@ Protocol (from sentinel_omega.docx):
     a high-similarity match means "this looks like what preceded event X".
   - ZERO synthetic data: features are computed only from non-NULL backcast
     rows; missing variables simply stay absent from the vector.
+
+Reconstrucción de TBL_FIRMAS (nota P2, 2026-11-10, medida en vivo con
+sqlite3 mode=ro sobre SENTINEL_OMEGA_PRO.db):
+  - consolidada 2,645 · nueva 1,361 · observada 668 · recurrente 872
+    (total 5,546). La auditoría cita 23,274 consolidadas al 2026-10-18:
+    ese era el conteo ANTES de la poda/discriminación que dejó 2,645.
+  - Exigibles (verificación parte 2, 2026-11-10): 1,049 con flag /
+    1,137 con lift>=2.0 — NO 1,277 (ese número no se reproduce).
+  - Existe TBL_FIRMAS_pre_discriminacion_20261008_050214 (respaldo de la
+    poda, no tocar — decisión D7). La reconstrucción exacta (qué filtro
+    dejó 23,274 -> 2,645) sigue SIN verificar: no se reconstruyó aquí.
 """
 
 import json

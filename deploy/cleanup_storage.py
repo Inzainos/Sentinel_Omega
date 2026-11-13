@@ -27,7 +27,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import List
 
-WORKSPACES = Path('/home/deamon/workspaces')
+WORKSPACES = Path('/home/deamon/Sentinel_Omega')
 DATA_DIR = WORKSPACES / 'sentinel_omega' / 'data'
 BACKUP_DIR = DATA_DIR / 'backups'
 ESTADO_DIR = WORKSPACES / 'estado'

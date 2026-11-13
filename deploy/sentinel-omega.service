@@ -15,10 +15,10 @@ StartLimitBurst=5
 
 [Service]
 Type=simple
-WorkingDirectory=%h/workspaces
-EnvironmentFile=%h/workspaces/deploy/.env
-ExecStartPre=/bin/rm -f %h/workspaces/sentinel_omega/data/sentinel_omega.pid
-ExecStart=%h/workspaces/.venv/bin/python sentinel_omega/launcher.py
+WorkingDirectory=/home/deamon/Sentinel_Omega
+EnvironmentFile=/home/deamon/.env.deamon
+ExecStartPre=/bin/rm -f /home/deamon/Sentinel_Omega/sentinel_omega/data/sentinel_omega.pid
+ExecStart=/home/deamon/.venv_unified/bin/python sentinel_omega/launcher.py
 Restart=always
 RestartSec=10
 

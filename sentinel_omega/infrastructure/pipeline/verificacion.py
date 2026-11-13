@@ -23,6 +23,7 @@ import sqlite3
 import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+from sentinel_omega.infrastructure.api._redact import sin_credenciales
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +102,35 @@ def verificar_juez(
         from sentinel_omega.core.firmas.cimatica import retroetiquetar_patrones
         retroetiquetar_patrones(conn, eventos)
     except Exception as e:
-        logger.warning(f"Retro-etiquetado cimático falló (non-blocking): {e}")
+        logger.warning(f"Retro-etiquetado cimático falló (non-blocking): {sin_credenciales(e)}")
+
+    # «Por evento se integraría de igual forma su figura cimática»
+    # (2026-10-25): las figuras que la víspera dejó etiquetadas cruzan a la
+    # biblioteca con n_eventos+1 POR EVENTO, deduplicadas e idempotentes
+    # (tbl_cimatica_bib_eventos guarda el epoch ya integrado — corridas
+    # superpuestas del Juez no inflan el conteo).
+    try:
+        from sentinel_omega.core.firmas.biblioteca_cimatica import (
+            integrar_evento_biblioteca,
+        )
+        integrar_evento_biblioteca(conn, eventos)
+    except Exception as e:
+        logger.warning(
+            f"Integración por evento a la biblioteca falló (non-blocking): "
+            f"{sin_credenciales(e)}"
+        )
+
+    # Schumann POR EVENTO (2026-10-26): a cada evento real M4.5+ se le
+    # agrega SU Schumann — la lectura a su hora y el comportamiento de las
+    # 24 h previas — para que el registro del evento lleve el dato y su
+    # comportamiento. Idempotente por epoch.
+    try:
+        from sentinel_omega.core.schumann_vivo import enriquecer_eventos
+        enriquecer_eventos(conn, eventos)
+    except Exception as e:
+        logger.warning(
+            f"Schumann por evento falló (non-blocking): {sin_credenciales(e)}"
+        )
 
     conteo: Dict[str, int] = {}
     for r in resueltos:
@@ -128,7 +157,7 @@ def verificar_juez(
                 f"{base_a.veredicto}"
             )
         except Exception as e:
-            logger.warning(f"Molchan vivo falló (non-blocking): {e}")
+            logger.warning(f"Molchan vivo falló (non-blocking): {sin_credenciales(e)}")
 
     castigos = []
     refuerzos = []
@@ -187,7 +216,7 @@ def verificar_juez(
                 len(castigos), len(refuerzos), silencios_acertados,
             )
     except Exception as e:
-        logger.warning(f"Disciplina post-Juez falló (non-blocking): {e}")
+        logger.warning(f"Disciplina post-Juez falló (non-blocking): {sin_credenciales(e)}")
 
     return {"saltada": False, "resueltas": len(resueltos),
             "conteo": conteo, "viva": viva,

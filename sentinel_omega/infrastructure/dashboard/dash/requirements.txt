@@ -1,0 +1,6 @@
+dash>=2.16.0
+dash-auth>=2.0.0
+plotly>=5.22.0
+pandas>=2.0.0
+psutil>=5.9.0
+dash-table>=5.0.0

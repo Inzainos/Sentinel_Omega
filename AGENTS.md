@@ -178,10 +178,16 @@ SNT (Shadow Node Theory) se usa **solo como framework matemático** (ley de pote
 
 ```
 sentinel_omega/     El sistema (8 bots + notificador + Padre + Juez, pipeline, DB, dashboard)
-deploy/             Operación: generar_reporte.py, systemd/Windows, atajo iOS, .env.example
+data/               symlink: SENTINEL_OMEGA_PRO.db -> sentinel_omega/data/SENTINEL_OMEGA_PRO.db
+deploy/             Operación: generar_reporte.py, systemd/Windows, atajo iOS, .env.example, archivos .service para systemd --user
 estado/             Reportes publicados: REPORTE.md (último) + historial/AAAA/MM/ (versionado)
 .github/workflows/  roy-vigilante.yml — corre un ciclo cada 2h en GitHub Actions (serverless)
 ```
+
+**Base de datos:** `data/SENTINEL_OMEGA_PRO.db` es un **enlace simbólico** a
+`sentinel_omega/data/SENTINEL_OMEGA_PRO.db` (el archivo real con los datos).
+Ambas rutas resuelven al mismo archivo; `ruta_db_canonica()` devuelve la ruta
+canónica bajo `data/`.
 
 ## Comandos
 
@@ -214,11 +220,16 @@ python deploy/reporte_ejecutivo.py                 # plantilla ejecutiva (cada 6
 python deploy/reporte_periodico.py --comparativo   # hoy vs ayer (o --semanal / --mensual)
 python deploy/enviar_correos.py                    # despacha por TELEGRAM pese al nombre (el correo se retiró el 2026-09-15)
 
-# Dashboard React (el que se trabaja) — la API primero, el front después
+# Dashboard — API primero, luego front
+
+# Principal: Dash/Plotly (8128) — login + 17 tabs
 python -m uvicorn sentinel_omega.infrastructure.dashboard.api:app --host 127.0.0.1 --port 8787
+cd sentinel_omega/infrastructure/dashboard/dash && python app.py   # :8128
+
+# Legacy: React/Vite (5173) — comentado/deshabilitado
 cd sentinel_omega/infrastructure/dashboard/web && npm run dev   # :5173
 
-# Dashboard Streamlit (legacy, 11 pestañas, no se amplía)
+# Legacy: Streamlit (8510) — 11 pestañas, no se amplía
 streamlit run sentinel_omega/infrastructure/dashboard/app.py --server.port 8510
 ```
 
@@ -250,6 +261,112 @@ NOAA SWPC · USGS FDSN · NASA OMNI2 (backcast) · NASA MSVOLSO2L4 (SO₂ volcá
 Tomsk (Schumann) · IERS (LOD) · Yahoo Finance (BTC, keyless) ·
 OpenWeatherMap (`OPENWEATHERMAP_KEY`) · NASA NEO (`NASA_API_KEY`, fallback DEMO_KEY) ·
 ESA Copernicus vía eodag.
+
+## Servicios systemd de usuario (sin sudo)
+
+Todos los servicios viven en `~/.config/systemd/user/` y se gestionan con
+`systemctl --user`. Las rutas fueron corregidas el 2026-10-28:
+
+| Servicio | Descripción | Estado | Puerto |
+|----------|-------------|--------|--------|
+| `sentinel-omega.service` | Ciclo principal (launcher.py) | activo | — |
+| `sentinel-omega-dashboard-api.service` | FastAPI API | activo | 8787 |
+| `sentinel-omega-dashboard-dash.service` | **Dash/Plotly principal** (login + 17 tabs) | activo | **8128** |
+| `sentinel-omega-dashboard-web.service` | React/Vite frontend (legacy) | activo | 5173 |
+| `sentinel-omega-watchdog.service` | Watchdog red + agente | activo | — |
+| `sentinel-omega-autofix.service` | Auto-detección de issues | oneshot | — |
+| `sentinel-omega-rutinas.service` | Reportes, Juez, Telegram | oneshot | — |
+| `sentinel-omega-mantenimiento.service` | Disciplina + barrido | oneshot | — |
+| `sentinel-omega-onnx-retrain.service` | Retrain ONNX semanal | oneshot | — |
+| `sentinel-omega-rebuild-watch.service` | Vigila rebuild | oneshot | — |
+| `vigia-sentinel.service` | Sidecar Elixir (mix no instalado) | inactivo | — |
+
+**Dashboard principal:** 8128 (Dash/Plotly, autenticación básica via `DASH_USER`/`DASH_PASS`).  
+**Legacy:** 5173 (React/Vite) y 8510 (Streamlit) — comentados/deshabilitados.
+
+**Correcciones aplicadas 2026-10-28:**
+- `WorkingDirectory` corregido de `%h/workspaces/sentinel_omega/sentinel_omega` y `__REPO_DIR__` a `/home/deamon/workspaces/sentinel_omega` en todos los `.service`
+- `ExecStart` corregido de `%h/workspaces/.venv/bin/python` a `/home/deamon/workspaces/sentinel_omega/.venv/bin/python`
+- `dashboard-web.service`: `WorkingDirectory` corregido a `sentinel_omega/infrastructure/dashboard/web` y `PATH` agregado para encontrar `npm`
+- `dashboard-dash.service`: nuevo servicio para Dash/Plotly en 8128 (`WorkingDirectory=/home/deamon/Sentinel_Omega/sentinel_omega/infrastructure/dashboard/dash`)
+- `watchdog.service`: `EnvironmentFile` corregido a `deploy/.env`; `WATCHDOG_RESTORE_UNITS` actualizado a `sentinel-omega,sentinel-omega-dashboard-api,sentinel-omega-dashboard-dash`; `WATCHDOG_STREAMLIT_CHECK=0` para no vigilar Streamlit legacy (puerto 8510, inexistente)
+- `vigia-sentinel.service`: `ExecStart` reemplazado por `/bin/true` (mix/Elixir no disponible en WSL)
+- **`sentinel-omega-dashboard-api.service`**: `EnvironmentFile` corregido de `%h/workspaces/deploy/.env` a `/home/deamon/workspaces/sentinel_omega/deploy/.env`
+- **`eskdalemuir-procesa.service`**: `ExecStart` corregido de `/home/deamon/workspaces/.venv/bin/python` a `/home/deamon/workspaces/sentinel_omega/.venv/bin/python`
+
+```bash
+systemctl --user daemon-reload          # tras editar .service
+systemctl --user restart sentinel-omega.service
+systemctl --user restart sentinel-omega-dashboard-api.service
+systemctl --user restart sentinel-omega-dashboard-dash.service
+systemctl --user status <servicio>
+journalctl --user -u <servicio> --no-pager -n 20
+```
+
+## 2. Timeout de Alfa-2 / ESA Sentinel (eodag) — CRÍTICO
+
+**El módulo `esa_sentinel.py` usa `eodag` (EODataAccessGateway) SIN timeout.** La llamada
+a `dag.search()` puede colgarse indefinidamente esperando respuesta de la API de
+ESA Copernicus, bloqueando todo el ciclo de Sentinel Omega antes de llegar a
+`insert_ciclo()`. Medido: el ciclo se queda atascado tras "Fetched 71 GOES
+electron flux records" y nunca persiste en `TBL_CICLOS`.
+
+**Fix aplicado 2026-10-28** en `sentinel_omega/infrastructure/pipeline/layer_runners.py`:
+- Se agregó `import signal` y una clase `Alfa2Timeout` con handler de `SIGALRM`
+- `signal.alarm(60)` se activa justo antes de `fetch_alfa2_data()` y se desactiva en `finally`
+- Si eodag tarda más de 60s, se lanza `Alfa2Timeout`, se captura en el `except Exception`
+  del bloque satellite, y el ciclo continúa sin bloquearse
+
+```python
+signal.signal(signal.SIGALRM, _alfa2_timeout_handler)
+signal.alarm(60)
+try:
+    alfa2_data = self.pipeline.fetch_alfa2_data(zones=zonas)
+finally:
+    signal.alarm(0)
+```
+
+**Verificar:** tras cada ciclo, confirmar que `TBL_CICLOS` tenga un registro nuevo
+(`SELECT id, timestamp FROM TBL_CICLOS ORDER BY id DESC LIMIT 1`).
+
+## 3. Concilio (consensus-expert-agent) — agente de uso general local
+
+El Concilio vive en `/home/deamon/consensus-expert-agent/` y usa modelos locales
+(Ollama) para resolver tareas con verificación por ejecución.
+
+**Modelo `capitan-deamon`** (creado 2026-10-28, basado en `llama3.2:3b`):
+- Inyecta la personalidad del Capitán desde `/home/deamon/Capitan.md`
+- Tono español latino mexicano, verdad técnica, foco estricto, integridad de código
+- Se creó con: `modelfiles/capitan-deamon.Modelfile` → `curl .../api/create`
+- Se usa como `worker_model` del Concilio (reemplaza `concilio-investigador`)
+
+**Cambios en `config.yaml` (2026-10-28):**
+- `worker_model`: `concilio-investigador` → `capitan-deamon`
+- `inject_sentinel_architecture`: `false` (sin memoria de Sentinel inyectada)
+- `telegram_preload_sentinel_pack`: `false` (sin pre-carga de Sentinel)
+
+**Cambios en `engine/orchestrator.py` (2026-10-28):**
+- `_augment_system()` inyecta la personalidad del Capitán como system prompt base
+  para TODOS los agentes (investigador, coder, optimizador)
+- Carga `/home/deamon/Capitan.md` y lo antepone al system prompt de cada agente
+
+**Cambios en `web_ui.py` (2026-10-28):**
+- Quitado el panel de Sentinel Omega (modo solo lectura, comunicación segura)
+- Quitados endpoints `/api/sentinel/health` y `/api/alerts/stats`
+- Interfaz ahora es de uso general local, sin restricciones de miniapp
+- 0 referencias a Sentinel en la página servida (HTTP 200, puerto 8002)
+
+```bash
+# Verificar modelo en Ollama
+curl -s http://127.0.0.1:11434/api/tags | python3 -c "import sys,json; [print(m['name']) for m in json.load(sys.stdin).get('models',[])]"
+
+# Probar el modelo capitan-deamon
+curl -s http://127.0.0.1:11434/api/generate -d '{"model":"capitan-deamon","prompt":"Hola","stream":false}'
+
+# Servicios del Concilio
+systemctl --user status consensus-web.service        # puerto 8002
+systemctl --user status consensus-telegram.service
+```
 
 ## Alertas y reportes (canal: TELEGRAM — el correo se eliminó)
 

@@ -56,7 +56,7 @@ wal:
   # base, porque el volcado automatico de SQLite venia fallando: un lector de
   # larga vida mantiene una instantanea abierta y no se pueden reclamar las
   # paginas. Y una copia hecha con `cp` en ese estado NO incluye el WAL.
-  umbral_mb: 800        # el ciclo lo revisa y vuelca si lo pasa
+  umbral_mb: 200        # P2 2026-11-10: bajado de 800; el ciclo lo revisa y vuelca si lo pasa
   vaciado_diario: true  # y a medianoche, con el barrido, pase lo que pase
 juez:
   # Peso con el que vota cada bot. false = paseo multiplicativo (el de siempre);

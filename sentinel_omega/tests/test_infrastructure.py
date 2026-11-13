@@ -1,6 +1,8 @@
 """Tests for infrastructure: Telegram bot, data pipeline, config, orchestrator."""
 
+import importlib.util
 import sqlite3
+import sys
 import time
 from pathlib import Path
 from unittest.mock import patch, MagicMock
@@ -10,10 +12,39 @@ import pandas as pd
 import pytest
 
 from sentinel_omega.infrastructure.telegram.bot import SentinelTelegramBot, TelegramMessage
-from sentinel_omega.core.shared.data_pipeline import (
-    DatabaseManager,
-    IngestionConfig,
-    FILL_SENTINEL,
+
+# `sentinel_omega.core.shared.data_pipeline` (LEGACY: DatabaseManager,
+# IngestionConfig, FILL_SENTINEL) se ARCHIVÓ el 2026-11-10 (turno 1 de
+# tuning, en `archive/2026-11-10/data_pipeline.py`). Las dos clases que
+# lo ejercitan se mantienen cargando el módulo desde su ruta archivada
+# — sigue importándose limpio (solo stdlib + numpy/pandas). Si el
+# archivo archivado no está o no importa, SOLO esas dos clases se
+# saltan con el motivo exacto; el resto del archivo (Telegram, config,
+# orchestrator) sigue corriendo.
+_ARCHIVO_LEGACY = (
+    Path(__file__).resolve().parents[2]
+    / "archive" / "2026-11-10" / "data_pipeline.py"
+)
+_LEGACY_DISPONIBLE = False
+try:
+    _spec = importlib.util.spec_from_file_location(
+        "data_pipeline_legacy_archivado", _ARCHIVO_LEGACY
+    )
+    _mod_legacy = importlib.util.module_from_spec(_spec)
+    sys.modules["data_pipeline_legacy_archivado"] = _mod_legacy
+    _spec.loader.exec_module(_mod_legacy)
+except (FileNotFoundError, ImportError):
+    DatabaseManager = None  # type: ignore[assignment]
+    IngestionConfig = None  # type: ignore[assignment]
+    FILL_SENTINEL = None  # type: ignore[assignment]
+else:
+    DatabaseManager = _mod_legacy.DatabaseManager
+    IngestionConfig = _mod_legacy.IngestionConfig
+    FILL_SENTINEL = _mod_legacy.FILL_SENTINEL
+    _LEGACY_DISPONIBLE = True
+_MOTIVO_LEGACY = (
+    "data_pipeline LEGACY archivado en archive/2026-11-10/ el 2026-11-10; "
+    "el módulo archivado no se importa en este checkout"
 )
 from sentinel_omega.config.sentinel_config import (
     SentinelOmegaConfig,
@@ -108,6 +139,7 @@ class TestTelegramBot:
 # ── DatabaseManager ──────────────────────────────────────────────────
 
 
+@pytest.mark.skipif(not _LEGACY_DISPONIBLE, reason=_MOTIVO_LEGACY)
 class TestDatabaseManager:
 
     def test_execute_and_query(self, tmp_path):
@@ -133,6 +165,7 @@ class TestDatabaseManager:
 # ── IngestionConfig ──────────────────────────────────────────────────
 
 
+@pytest.mark.skipif(not _LEGACY_DISPONIBLE, reason=_MOTIVO_LEGACY)
 class TestIngestionConfig:
 
     def test_defaults(self):

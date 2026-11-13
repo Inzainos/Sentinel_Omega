@@ -153,6 +153,13 @@ def register_cycle_predictions(
                 "nodos": nodos_pred,
                 "ventana_h": ventana_h,
                 "features_generales": features,
+                # Evidencia cimática del ciclo EN CURSO (2026-10-26): qué
+                # vísperas históricas empareja la figura viva. El launcher la
+                # calcula ANTES de esta llamada y la deja en geo.metadata.
+                # None en filas viejas = aún no se medía, no se rellena.
+                "cimatica_evidencia": (
+                    getattr(geo, "metadata", None) or {}
+                ).get("cimatica_evidencia"),
             },
             fase="viva",
         )

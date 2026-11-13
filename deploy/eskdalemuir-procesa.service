@@ -6,6 +6,6 @@ Description=Procesa incrementalmente los dias .ssc ya descargados del zip Eskdal
 
 [Service]
 Type=oneshot
-ExecStart=/home/deamon/workspaces/.venv/bin/python /home/deamon/workspaces/deploy/procesar_eskdalemuir.py --procesar-parcial /home/deamon/workspaces/sentinel_omega/data/schumann_eskdalemuir/2025.zip /home/deamon/workspaces/sentinel_omega/data/schumann_eskdalemuir/eskdalemuir.db
-StandardOutput=append:/home/deamon/workspaces/sentinel_omega/logs/eskdalemuir_procesa.log
-StandardError=append:/home/deamon/workspaces/sentinel_omega/logs/eskdalemuir_procesa.log
+ExecStart=/home/deamon/.venv_unified/bin/python /home/deamon/Sentinel_Omega/deploy/procesar_eskdalemuir.py --procesar-parcial /home/deamon/Sentinel_Omega/sentinel_omega/data/schumann_eskdalemuir/2025.zip /home/deamon/Sentinel_Omega/sentinel_omega/data/schumann_eskdalemuir/eskdalemuir.db
+StandardOutput=append:/home/deamon/Sentinel_Omega/sentinel_omega/logs/eskdalemuir_procesa.log
+StandardError=append:/home/deamon/Sentinel_Omega/sentinel_omega/logs/eskdalemuir_procesa.log

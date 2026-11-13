@@ -666,7 +666,7 @@ class TestMuroCincoEventos:
         assert result.muro_breach is True
         assert result.risk_label == "CRÍTICO"
 
-    def test_five_walls_all_active(self):
+    def test_four_walls_all_active(self):
         from sentinel_omega.core.precursor.muro_cinco_eventos import MuroCincoEventos
         muro = MuroCincoEventos()
         # Una señal por DOMINIO. Este test usaba FANTASMA para el frente
@@ -675,16 +675,36 @@ class TestMuroCincoEventos:
         # (medido: el 40 % de las veces que el sistema decía «dominio geofísico
         # alterado», lo alterado era el Sol). Aquí va SEISMIC_CLUSTER, que sí
         # es de la Tierra.
+        #
+        # D11 (2026-11-12): el quinto muro (FINANCIERO/SOCIAL) se retiró —
+        # 0 activaciones en 16.031 eventos. Antes este test metía 5 señales
+        # (incluida CORRELACION_FINANCIERA) y exigía walls_active == 5; con
+        # 4 muros, las 4 señales de los 4 dominios dan walls_active == 4 y
+        # CRÍTICO (todos los dominios alterados).
         detections = [
             self._make_detection(PrecursorType.SEISMIC_CLUSTER),
             self._make_detection(PrecursorType.NIEBLA_TULE),
             self._make_detection(PrecursorType.TSUNAMI),
             self._make_detection(PrecursorType.SILENT_TRIGGER),
-            self._make_detection(PrecursorType.CORRELACION_FINANCIERA),
         ]
         result = muro.evaluate(detections)
-        assert result.walls_active == 5
+        assert result.walls_active == 4
+        assert result.total_walls == 4
         assert result.muro_breach is True
+        assert result.risk_label == "CRÍTICO"
+
+    def test_financiero_no_cuenta_tras_d11(self):
+        """D11 (2026-11-12): CORRELACION_FINANCIERA ya no enciende ningún
+        muro. La detección sigue llegando (el scanner la emite) y queda en
+        active_precursor_types; el breach no la cuenta."""
+        from sentinel_omega.core.precursor.muro_cinco_eventos import MuroCincoEventos
+        muro = MuroCincoEventos()
+        result = muro.evaluate([
+            self._make_detection(PrecursorType.CORRELACION_FINANCIERA),
+        ])
+        assert result.walls_active == 0
+        assert result.muro_breach is False
+        assert "CORRELACION_FINANCIERA" in result.active_precursor_types
 
     def test_correlation_score(self):
         from sentinel_omega.core.precursor.muro_cinco_eventos import MuroCincoEventos
@@ -721,7 +741,11 @@ class TestMuroCincoEventos:
         ]
         result = muro.evaluate(detections)
         report = format_muro_report(result)
-        assert "MURO DE LOS 5 EVENTOS" in report
+        # D11 (2026-11-12): el muro es de 4, no de 5 — el título del reporte
+        # dice 4. FINANCIERO/SOCIAL ya no aparece como muro.
+        assert "MURO DE LOS 4 EVENTOS" in report
+        assert "MURO DE LOS 5 EVENTOS" not in report
+        assert "FINANCIERO" not in report
         assert "GEOFÍSICO" in report
         assert "ATMOSFÉRICO" in report
         assert "OCEÁNICO" in report

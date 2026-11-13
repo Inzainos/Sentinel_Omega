@@ -1,349 +1,316 @@
-/**
- * PRINCIPAL — tablero general del sistema.
- *
- * Datos reales de DOS endpoints verificados contra :8787:
- *   /api/overview → fantasma, muro, counts, risk_distribution, health
- *   /api/estado-vivo → GOES X-ray, térmico alfa2, señales con countdown,
- *                     Schumann-actividad, auditoría (ganancia)
- */
-import { useCallback, useEffect, useState } from "react";
-import { api } from "@/lib/api";
-import { usePoll } from "@/hooks/usePoll";
-import {
-  Panel,
-  Metrica,
-  Cifra,
-  SinDatos,
-  BannerError,
-  TablaDatos,
-  EscalaRiesgo,
-  SegmentosMuro,
-  nivelDe,
-  colorNivel,
-  accionNivel,
-} from "@/components/ui/data";
-import { fmtTs } from "@/lib/utils";
+import { useCallback, useMemo } from "react"
+import { api } from "@/lib/api"
+import { usePoll } from "@/hooks/usePoll"
+import { KpiCard } from "@/components/ui/base"
+import { AskBox } from "@/components/AskBox"
+import { TabIntro, Caption } from "@/components/TabIntro"
+import { DataTable } from "@/components/DataTable"
+import { FantasmaChart, MuroChart, CimaticaLive } from "@/components/charts"
+import { Map2D } from "@/components/maps/Map2D"
+import { fmtNum, fmtTs } from "@/lib/utils"
 
 export function PrincipalTab() {
-  const ovF = useCallback(() => api.overview(), []);
-  const evF = useCallback(() => api.estadoVivo(), []);
-  const ov = usePoll(ovF, 20000);
-  const ev = usePoll(evF, 30000);
+  const ovF = useCallback(() => api.overview(), [])
+  const alF = useCallback(() => api.alertas(20), [])
+  const ciF = useCallback(() => api.cimatica(30), [])
+  const caF = useCallback(() => api.cimaticaAhora(), [])
+  const nF = useCallback(() => api.nodos(), [])
+  const sF = useCallback(() => api.sismos(4.5, 40), [])
+  const cycF = useCallback(() => api.ciclos(40), [])
+  const corrF = useCallback(() => api.correlaciones(), [])
+  const repF = useCallback(() => api.reportes(), [])
+  const tgF = useCallback(() => api.telegramStatus(), [])
+  const precF = useCallback(() => api.precursores(40), [])
+  const acF = useCallback(() => api.bots(), [])
+  const hmF = useCallback(() => api.heatmaps(), [])
 
-  // Countdown que se resta en vivo (tick client-side cada segundo)
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, []);
+  const ov = usePoll(ovF, 20000)
+  const al = usePoll(alF, 20000)
+  const ci = usePoll(ciF, 30000)
+  const ca = usePoll(caF, 30000)
+  const n = usePoll(nF, 30000)
+  const s = usePoll(sF, 30000)
+  const cyc = usePoll(cycF, 20000)
+  const corr = usePoll(corrF, 60000)
+  const rep = usePoll(repF, 60000)
+  const tg = usePoll(tgF, 60000)
+  const prec = usePoll(precF, 20000)
+  const ac = usePoll(acF, 60000)
+  const hm = usePoll(hmF, 60000)
 
-  if (ov.error) return <BannerError mensaje={ov.error} />;
-  if (ov.loading && !ov.data) return <SinDatos titulo="Cargando estado del sistema…" />;
+  const acData = ac.data as Record<string, unknown> | undefined
+  const asertVivaGlobal = acData?.asertividad_viva_global
+  const asertGlobal = asertVivaGlobal != null ? `${(Number(asertVivaGlobal) * 100).toFixed(1)}%` : "---"
+  const gananciaReal = acData?.ganancia_real != null ? `${Number(acData.ganancia_real).toFixed(2)}x` : "---"
+  const tmx = (hm.data?.telemetry_x_events || {}) as {
+    present?: boolean
+    features?: string[]
+    events?: string[]
+    matrix?: number[][]
+  }
 
-  const d: any = ov.data ?? {};
-  const f: any = d.fantasma ?? {};
-  const muro: any = d.muro ?? {};
-  const ciclo: any = d.ciclo ?? {};
-  const counts: any = d.counts ?? {};
-  const risk: any = d.risk_distribution ?? {};
-  const calert: any = d.cycle_alert_rate ?? {};
-  const health: any = d.health ?? {};
+  const data = ov.data
+  const risk = Object.entries(data?.risk_distribution || {}).map(([name, value]) => ({
+    name,
+    value: Number(value),
+  }))
+  const nivel = data?.fantasma?.nivel_riesgo || ""
+  const calm =
+    !["HIGH", "CRITICAL"].includes(String(nivel).toUpperCase()) && !data?.muro?.muro_breach
 
-  // estado-vivo: GOES, térmico, señales, Schumann-actividad, auditoría
-  const evd: any = ev.data ?? {};
-  const goesClase = evd.goes_clase ?? null;
-  const goesFlux = evd.goes_flux_max_24h != null ? Number(evd.goes_flux_max_24h) : null;
-  const termico = evd.termico ?? null;
-  const senales: any[] = evd.senales ?? [];
-  const telemetria: any = evd.telemetria ?? {};
-  const schAct = telemetria.schumann_activity != null ? Number(telemetria.schumann_activity) : (f.schumann_activity != null ? Number(f.schumann_activity) : null);
-  const auditoria: any = evd.auditoria ?? {};
-  const ganancia = auditoria.ganancia != null ? Number(auditoria.ganancia) : null;
-  const evTs = evd.ts != null ? Number(evd.ts) : Date.now() / 1000;
+  const nodes = useMemo(
+    () =>
+      (n.data || [])
+        .map((nd: any) => ({
+          lat: Number(nd.lat),
+          lon: Number(nd.lon),
+          tipo: String(nd.tipo || ""),
+          label: String(nd.nombre || ""),
+          highlight:
+            String(nd.nombre || "").toLowerCase().includes("tlaxcala") && String(nd.tipo) === "real",
+        }))
+        .filter((p: any) => Number.isFinite(p.lat) && Number.isFinite(p.lon)),
+    [n.data],
+  )
+  const quakes = (s.data?.items || [])
+    .map((q: any) => ({
+      lat: Number(q.lat),
+      lon: Number(q.lon),
+      mag: Number(q.magnitude),
+      label: String(q.region || ""),
+    }))
+    .filter((p: any) => Number.isFinite(p.lat) && Number.isFinite(p.lon))
 
-  const fantasma = f.value != null ? Number(f.value) : null;
-  const nivel = nivelDe(f.nivel_riesgo ?? ciclo.nivel_riesgo);
-  const kp = f.kp != null ? Number(f.kp) : null;
-  const bz = f.bz_nT != null ? Number(f.bz_nT) : null;
-  const viento = f.viento_km_s != null ? Number(f.viento_km_s) : null;
+  const fantasmaSpark = [...(cyc.data || [])]
+    .reverse()
+    .map((r, i) => ({ i, y: Number(r.fantasma ?? 0) }))
 
-  const riesgoFilas = [
-    { nivel: "CRITICAL", n: Number(risk.CRITICAL ?? 0) },
-    { nivel: "HIGH", n: Number(risk.HIGH ?? 0) },
-    { nivel: "MODERATE", n: Number(risk.MODERATE ?? 0) },
-    { nivel: "LOW", n: Number(risk.LOW ?? 0) },
-  ];
+  const geo = ((al.data?.geo_alerts as Record<string, unknown>[]) || []).slice(0, 5)
+  const breaches = ((al.data?.muro_breaches as Record<string, unknown>[]) || []).slice(0, 5)
+  const hot = ((al.data?.hot_fantasma as Record<string, unknown>[]) || []).slice(0, 5)
+  const topAlertas = [
+    ...geo.map((r: any) => ({ ...r, _kind: "geo" })),
+    ...breaches.map((r: any) => ({ ...r, _kind: "muro" })),
+    ...hot.map((r: any) => ({ ...r, _kind: "fantasma" })),
+  ].slice(0, 8)
+
+  const padre: any = corr.data?.padre
+
+  if (ov.error) return <div className="p-4 text-red-500">Error: {ov.error}</div>
+  if (ov.loading && !ov.data) return <div className="p-4 text-muted">Cargando Principal...</div>
+
+  const caData = ca.data || {}
+  const tgData = tg.data || {}
+  const repFiles = rep.data?.files || []
 
   return (
-    <div className="space-y-5">
-      <Panel
-        titulo="Estado del sistema"
-        meta={health.last_cycle_ts ? `último ciclo ${fmtTs(Number(health.last_cycle_ts))}` : "sin ciclo"}
-        acento={nivel}
-        nota="La frecuencia Schumann NO se mide desde el 2026-10-09; solo la actividad (intensidad del espectrograma de Tomsk). El hueco honesto se muestra como «sin medir», no como cero."
-      >
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-          <div className="flex flex-col gap-3">
-            <div className="flex items-baseline gap-2">
-              <span className="etiqueta">Fantasma</span>
-              <span className="mono texto-principal fuente-negrita text-xl">
-                <Cifra valor={fantasma} digits={2} />
-              </span>
-              <span className="mono texto-micro fuente-negrita" style={{ color: colorNivel(nivel) }}>
-                {accionNivel(nivel)}
-              </span>
-              {health.stale && (
-                <span className="mono texto-micro texto-desvanecido" title={`edad ${health.stale_seconds}s`}>
-                  · telemetría con rezago
-                </span>
-              )}
-            </div>
-            <EscalaRiesgo valor={fantasma} max={50} umbrales={[15, 30]} />
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-1">
-              <Metrica etiqueta="Kp" valor={<Cifra valor={kp} digits={2} />} />
-              <Metrica etiqueta="Bz (nT)" valor={<Cifra valor={bz} digits={2} />} />
-              <Metrica etiqueta="Viento solar" valor={<Cifra valor={viento} digits={0} unidad="km/s" />} />
-              <Metrica
-                etiqueta="Actividad Schumann"
-                valor={<Cifra valor={schAct} digits={1} unidad="%" />}
-                contexto={f.schumann_hz == null ? "Hz sin medir (retirado 2026-10-09)" : undefined}
-              />
-            </div>
-          </div>
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-2">
-              <span className="etiqueta">Muro de 5 Eventos</span>
-              <div className="w-40">
-                <SegmentosMuro
-                  activos={muro.walls_active != null ? Number(muro.walls_active) : null}
-                  total={5}
-                  breach={Boolean(muro.muro_breach)}
-                />
-              </div>
-              <span className="mono texto-micro texto-desvanecido">
-                {muro.walls_active ?? "—"} de 5 · {muro.risk_label ?? "—"}
-              </span>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <Metrica
-                etiqueta="Nodos vigilados"
-                valor={counts.nodos != null ? String(counts.nodos) : "—"}
-              />
-              <Metrica
-                etiqueta="Sismos M4.5+"
-                valor={counts.sismos_m45 != null ? Number(counts.sismos_m45).toLocaleString("es-MX") : "—"}
-              />
-              <Metrica
-                etiqueta="Ciclos con ALERT"
-                valor={
-                  calert.total_cycles
-                    ? `${calert.alert_cycles} de ${Number(calert.total_cycles).toLocaleString("es-MX")}`
-                    : "—"
-                }
-                contexto="tasa de alerta 0 % = el sistema no alarmó en vivo"
-              />
-              <Metrica
-                etiqueta="Fantasma promedio"
-                valor={<Cifra valor={calert.avg_fantasma} digits={2} />}
-                contexto="promedio histórico de ciclos"
-              />
-            </div>
-          </div>
-        </div>
-      </Panel>
+    <div className="space-y-6">
+      <TabIntro title="Principal - pulso del sistema">
+        <p>
+          Vista unificada: Fantasma, Muro, telemetria, cimatica en vivo, alertas top y un mini mapa. Los numeros
+          salen de SQLite en modo lectura. No es un juguete de prediccion ni un consejo de compra.
+        </p>
+        <p>
+          {calm
+            ? "Lectura actual: calma relativa. No hay que llamar a nadie solo por este tablero."
+            : "Lectura actual: el sistema esta inquieto (riesgo alto o Muro roto). Revise alertas abajo y avise a quien corresponda."}
+        </p>
+      </TabIntro>
 
-      <Panel
-        titulo="Distribución de riesgo — ciclos históricos"
-        meta={`${riesgoFilas.reduce((a, r) => a + r.n, 0).toLocaleString("es-MX")} ciclos clasificados`}
-      >
-        <TablaDatos
-          filas={riesgoFilas}
-          densa
-          vacío="Sin distribución"
-          columnas={[
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
+        <div className="space-y-3">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-muted">FANTASMA</h4>
+          <div className="text-3xl font-bold text-foreground">{Number(data?.fantasma?.value ?? 0)}</div>
+          <div className="text-xs text-muted">indice de riesgo cosmico</div>
+        </div>
+        <div className="space-y-3">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-muted">MURO</h4>
+          <div className="text-3xl font-bold text-foreground">{Number(data?.muro?.walls_active ?? 0)} / 5</div>
+          <div className="text-xs text-muted">{data?.muro?.muro_breach ? "BREACH: 3+ paredes activas" : "sin rotura"}</div>
+        </div>
+        <KpiCard
+          label="ASERTIVIDAD GLOBAL"
+          value={asertGlobal}
+          accent="#10b981"
+          hint="aciertos/(aciertos+fallos) - cuenta los silencios, sin falsos positivos"
+          size="md"
+        />
+        <KpiCard
+          label="GANANCIA REAL"
+          value={gananciaReal}
+          accent="#ff9100"
+          hint="precision de la alarma / tasa base * 1x = no aporta"
+          size="md"
+        />
+        <div className="space-y-3">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-muted">NODOS</h4>
+          <div className="text-3xl font-bold text-foreground">{data?.counts?.nodos ?? "---"}</div>
+          <div className="text-xs text-muted">125 puntos de topologia</div>
+        </div>
+        <div className="space-y-3">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-muted">SISMOS &ge;4.5</h4>
+          <div className="text-3xl font-bold text-foreground">{data?.counts?.sismos_m45 ?? "---"}</div>
+          <div className="text-xs text-muted">umbral de alerta del Padre</div>
+        </div>
+      </div>
+
+      <Caption>
+        LOW &gt;5 calma - MODERATE 5-15 atencion - HIGH 15-30 avisar - CRITICAL &ge;30 protocolo. El Muro se rompe con 3
+        de 5 paredes.
+      </Caption>
+
+      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+        <div className="space-y-4">
+          <h4 className="text-sm font-medium">Fantasma (ultimos 40 ciclos)</h4>
+          {fantasmaSpark.length ? (
+            <FantasmaChart
+              data={[...(cyc.data || [])].reverse().map((r, i) => ({
+                // Use relative timestamps from base time to avoid impure Date.now() in render
+                timestamp: (performance.now() / 1000) - (40 - i) * 60,
+                value: Number(r.fantasma ?? 0),
+              }))}
+              height={160}
+              animate
+            />
+          ) : (
+            <Caption>Sin ciclos para sparkline.</Caption>
+          )}
+        </div>
+        <div className="space-y-4">
+          <h4 className="text-sm font-medium">Muro de los 5 (ultimos 40 ciclos)</h4>
+          <MuroChart
+            data={cyc.data || []}
+            height={160}
+            animate
+          />
+        </div>
+        <div className="space-y-4">
+          <h4 className="text-sm font-medium">Distribucion de riesgo</h4>
+          {risk.length ? (
+            <div className="h-48">
+              <canvas id="risk-pie" />
+            </div>
+          ) : (
+            <Caption>Sin distribucion de riesgo en esta DB.</Caption>
+          )}
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium">Mini mapa - nodos + sismos &ge;4.5</h4>
+          <Map2D nodes={nodes} quakes={quakes} highlight={{ lat: 19.31, lon: -98.23, label: "Tlaxcala" }} />
+        </div>
+        <div className="space-y-3">
+          <h4 className="text-sm font-medium">Cimatica ahora</h4>
+          <CimaticaLive
+            patterns={ci.data?.items || []}
+            currentClave={ca.data?.current_clave}
+            librarySize={ca.data?.biblioteca_n}
+            hits={ca.data?.library?.n_hits}
+            width={300}
+            height={300}
+          />
+          <Caption>
+            Clave actual: {String(caData.current_clave || "---")}.{" "}
+            {String(caData.caption || "Lookup live vs biblioteca; sin entrenamiento.")}
+          </Caption>
+        </div>
+      </div>
+
+      <section className="space-y-2">
+        <h4 className="text-sm font-medium">Top alertas</h4>
+        <DataTable
+          rows={topAlertas}
+          empty="Sin alertas activas - todo en verde segun umbrales."
+          columns={[
+            { key: "_kind", label: "Tipo" },
+            { key: "timestamp", label: "Tiempo", render: (r: any) => fmtTs(r.timestamp) },
             {
-              clave: "nivel",
-              etiqueta: "Nivel",
-              render: (r) => (
-                <span className="mono texto-micro fuente-negrita" style={{ color: colorNivel(nivelDe(r.nivel)) }}>
-                  {r.nivel}
-                </span>
-              ),
+              key: "fantasma",
+              label: "Fantasma",
+              render: (r: any) => (r.fantasma != null ? fmtNum(r.fantasma) : "---"),
             },
             {
-              clave: "n",
-              etiqueta: "Ciclos",
-              num: true,
-              render: (r) => Number(r.n).toLocaleString("es-MX"),
+              key: "nivel_riesgo",
+              label: "Riesgo",
+              render: (r: any) => String(r.nivel_riesgo || r.risk_label || r.geo_signal || "---"),
             },
           ]}
         />
-      </Panel>
+      </section>
 
-      {/* GOES X-ray + Térmico Alfa-2 (sólo si hay algo que reportar) */}
-      {(goesClase || (termico && termico.zonas > 0)) && (
-        <div className="grid gap-5 lg:grid-cols-2">
-          {goesClase && (
-            <Panel
-              titulo="GOES X-ray — Fulguración solar"
-              meta={`clase ${goesClase}`}
-              acento={goesClase === "X" ? "CRITICAL" : goesClase === "M" ? "HIGH" : undefined}
-              nota="NOAA: M→WATCH, X→ALERT (desde 2026-10-18, el bot satelital alfa-2). Una fulguración M/X puede preceder una CME que llegue a la Tierra en 24–72 h."
-            >
-              <div className="flex items-center gap-4">
-                <span
-                  className="text-4xl font-bold"
-                  style={{
-                    color: goesClase === "X" ? "var(--color-critico)" : goesClase === "M" ? "var(--color-aviso)" : "var(--color-atencion)",
-                  }}
-                >
-                  ☀️ {goesClase}
-                </span>
-                <div>
-                  <div className="mono text-sm text-foreground">
-                    flux máx 24 h: {goesFlux != null ? goesFlux.toExponential(1) : "—"} W/m²
-                  </div>
-                  <div className="text-xs text-muted">
-                    {goesClase === "X" ? "ALERT — protocolo" : goesClase === "M" ? "WATCH — vigilancia" : "actividad normal"}
-                  </div>
-                </div>
-              </div>
-            </Panel>
-          )}
-          {termico && termico.zonas > 0 && (
-            <Panel
-              titulo="Alfa-2 · Térmico por precedente de zona"
-              meta={`${termico.zonas} zona(s) sin precedente`}
-              acento={termico.zonas >= 3 ? "CRITICAL" : "HIGH"}
-              nota="Zona con temperatura actual por encima de su PROPIO máximo histórico. ≥1 zona → WATCH, ≥3 simultáneas → ALERT."
-            >
-              <div className="flex items-center gap-4">
-                <span
-                  className="text-3xl font-bold"
-                  style={{ color: termico.zonas >= 3 ? "var(--color-critico)" : "var(--color-aviso)" }}
-                >
-                  🛰️ {termico.zonas}
-                </span>
-                <div className="text-sm text-muted">
-                  zona(s) con anomalía térmica
-                  <br />
-                  máximo detectado: {termico.max ?? "—"}
-                </div>
-              </div>
-            </Panel>
+      {tmx.present && (tmx.features?.length || 0) > 0 ? (
+        <section className="space-y-2">
+          <h4 className="text-sm font-medium">Mapa de calor - telemetria x evento</h4>
+          <div className="h-64">
+            <canvas id="heatmap-chart" />
+          </div>
+        </section>
+      ) : null}
+
+      <section className="space-y-2">
+        <h4 className="text-sm font-medium">Mini heatmap correlaciones (Padre)</h4>
+        {padre?.present && (padre.patrones?.length || 0) > 0 ? (
+          <div className="h-64">
+            <canvas id="padre-heatmap-chart" />
+          </div>
+        ) : (
+          <div className="rounded-xl border border-border bg-bg-card p-4 text-center text-muted">
+            Sin correlaciones padre en esta DB
+            <p className="text-xs mt-1">tbl_correlaciones_padre vacia hasta re-entrenar. No se inventan celdas.</p>
+          </div>
+        )}
+      </section>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        <div className="rounded-xl border border-border bg-bg-card/40 px-3 py-3 text-xs">
+          <div className="font-medium text-sm mb-1">Reportes (estado/)</div>
+          {rep.data?.present ? (
+            <ul className="space-y-0.5 text-muted">
+              {repFiles.slice(0, 5).map((f: any) => (
+                <li key={f.name} className="mono">
+                  {f.name} - {(f.bytes / 1024).toFixed(1)} KB
+                </li>
+              ))}
+              {!repFiles.length ? <li>Carpeta presente, sin archivos.</li> : null}
+            </ul>
+          ) : (
+            <p className="text-muted">Sin carpeta estado/ en este arbol.</p>
           )}
         </div>
-      )}
+        <div className="rounded-xl border border-border bg-bg-card/40 px-3 py-3 text-xs">
+          <div className="font-medium text-sm mb-1">Telegram</div>
+          <p className={tgData.configured ? "text-success" : "text-warning"}>
+            {tgData.configured ? "Configurado" : "No configurado / dry-run"}
+          </p>
+          <p className="text-muted mt-1">
+            token={String(tgData.has_token)} - chat={String(tgData.has_chat_id)} - dry_run=
+            {String(tgData.dry_run)} - cooldown={String(tgData.cooldown_s ?? "---")}s
+          </p>
+          <Caption>No se muestran secretos. Solo banderas de configuracion.</Caption>
+        </div>
+      </div>
 
-      {/* Señales vivas con countdown */}
-      {senales.length > 0 && (
-        <Panel
-          titulo="Señales vivas — firmas emparejadas con countdown"
-          meta={`${senales.length} señal(es) · ancla en la primera detección continua`}
-          nota="Cada tarjeta: sitio completo (nombre → nodo → coords), el evento que su firma suele preceder, y el LAG restante restándose en vivo desde el ancla del padre. «Sin lag medido» = la firma nunca demostró anticipar."
-        >
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {senales.map((s: any, i: number) => {
-              const restH =
-                s.lag_restante_h != null
-                  ? Number(s.lag_restante_h) - (now / 1000 - evTs) / 3600
-                  : null;
-              const colorLag =
-                restH == null || restH <= 0
-                  ? "var(--color-faint)"
-                  : restH < 24
-                    ? "var(--color-aviso)"
-                    : restH < 72
-                      ? "var(--color-atencion)"
-                      : "var(--color-calma)";
-              return (
-                <div
-                  key={`${s.id_nodo}-${s.evento}-${i}`}
-                  className="relative overflow-hidden rounded-lg border bg-surface p-3 pl-4"
-                  style={{
-                    borderColor:
-                      restH != null && restH > 0 && restH < 24
-                        ? "color-mix(in oklch, var(--color-aviso) 40%, var(--color-border))"
-                        : "var(--color-border)",
-                  }}
-                >
-                  <span
-                    className="absolute inset-y-0 left-0 w-[3px]"
-                    style={{ background: colorLag }}
-                    aria-hidden="true"
-                  />
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-semibold text-foreground" title={s.sitio}>
-                      {s.sitio}
-                    </div>
-                    <div className="mt-0.5 flex items-baseline gap-2">
-                      <span className="mono text-[0.7rem] font-bold uppercase tracking-wider text-muted">
-                        {s.evento}
-                      </span>
-                      <span className="text-[0.7rem] text-faint tnum">
-                        parecido <Cifra valor={s.similitud} digits={2} /> · visto{" "}
-                        {s.recurrencia != null ? `${s.recurrencia}×` : "—"}
-                      </span>
-                    </div>
-                    <div className="mt-2 flex items-baseline gap-2">
-                      {restH != null ? (
-                        <>
-                          <span className="mono text-lg font-bold tnum" style={{ color: colorLag }}>
-                            ~{Math.round(restH)} h
-                          </span>
-                          <span className="text-[0.7rem] text-faint">
-                            ({(restH / 24).toFixed(1)} d)
-                          </span>
-                        </>
-                      ) : (
-                        <span className="text-sm italic text-faint">
-                          sin lag medido — no demostró anticipar
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+      {prec.data?.length ? (
+        <div>
+          <h4 className="mb-1 text-sm font-medium">Precursores recientes (Kp / Bz)</h4>
+          <div className="h-32">
+            <canvas id="precursores-chart" />
           </div>
-        </Panel>
-      )}
+        </div>
+      ) : null}
 
-      {/* Auditoría: la vara honesta */}
-      {ganancia != null && (
-        <Panel
-          titulo="¿El sistema aporta información?"
-          meta="fase viva · lagging"
-          nota="La asertividad cuenta como acierto cada silencio en calma (y la calma es casi todo). La ganancia compara la precisión de la alarma contra la tasa base: 1× significa que alertar siempre habría dado lo mismo. Nunca se muestran solas."
-        >
-          <div className="grid gap-4 md:grid-cols-4">
-            <Metrica
-              etiqueta="Ganancia sobre alertar a ciegas"
-              valor={`${ganancia.toFixed(2)}×`}
-              contexto="1× = no aporta"
-              nivel={ganancia > 1 ? "LOW" : "HIGH"}
-            />
-            <Metrica
-              etiqueta="Aciertos (viva)"
-              valor={auditoria.aciertos != null ? Number(auditoria.aciertos).toLocaleString("es-MX") : "—"}
-              contexto="incluye silencios en calma"
-              jerarquia="compacta"
-            />
-            <Metrica
-              etiqueta="Falsas alarmas (viva)"
-              valor={auditoria.falsos_positivos != null ? Number(auditoria.falsos_positivos).toLocaleString("es-MX") : "—"}
-              contexto="avisó y no pasó nada"
-              jerarquia="compacta"
-            />
-            <Metrica
-              etiqueta="Omisiones (viva)"
-              valor={auditoria.fallos != null ? Number(auditoria.fallos).toLocaleString("es-MX") : "—"}
-              contexto="pasó algo y no avisó — pesa 10×"
-              jerarquia="compacta"
-            />
-          </div>
-        </Panel>
-      )}
+      <section className="space-y-2">
+        <div className="flex items-center gap-2">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7c86dc" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2 4 6v6c0 5 3.4 8.5 8 10 4.6-1.5 8-5 8-10V6z" /></svg>
+          <h4 className="text-sm font-medium">Asistente - preguntale al Concilio</h4>
+          <span className="mono ml-auto text-[10.5px] text-muted">lee la DB en vivo - nemotron &gt; deepseek &gt; gemma3</span>
+        </div>
+        <div className="rounded-xl border border-border bg-bg-card p-4">
+          <AskBox />
+        </div>
+      </section>
     </div>
-  );
+  )
 }

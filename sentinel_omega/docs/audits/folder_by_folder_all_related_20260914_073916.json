@@ -1,6 +1,6 @@
 [
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "items": [
       {
         "dir": ".",
@@ -3377,7 +3377,7 @@
     ]
   },
   {
-    "root": "/home/deamon/workspaces/deploy",
+    "root": "/home/deamon/Sentinel_Omega/deploy",
     "items": [
       {
         "dir": ".",

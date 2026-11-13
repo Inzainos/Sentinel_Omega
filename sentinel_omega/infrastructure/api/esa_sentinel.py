@@ -17,6 +17,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
+from sentinel_omega.infrastructure.api._redact import sin_credenciales
+from sentinel_omega.infrastructure.api.circuit_breaker import circuit
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +71,7 @@ def _get_dag():
     return dag
 
 
+@circuit("esa")
 def search_sentinel2(
     bbox: Tuple[float, float, float, float],
     start: Optional[str] = None,
@@ -134,13 +137,14 @@ def search_sentinel2(
             date_range=(start, end),
         )
     except Exception as e:
-        logger.error(f"Sentinel-2 search failed: {e}")
+        logger.error(f"Sentinel-2 search failed: {sin_credenciales(e)}")
         return SatelliteSearchResult(
             products=[], total_found=0,
             bbox=bbox, date_range=(start, end),
         )
 
 
+@circuit("esa")
 def search_sentinel1_sar(
     bbox: Tuple[float, float, float, float],
     start: Optional[str] = None,
@@ -195,7 +199,7 @@ def search_sentinel1_sar(
             date_range=(start, end),
         )
     except Exception as e:
-        logger.error(f"Sentinel-1 SAR search failed: {e}")
+        logger.error(f"Sentinel-1 SAR search failed: {sin_credenciales(e)}")
         return SatelliteSearchResult(
             products=[], total_found=0,
             bbox=bbox, date_range=(start, end),
@@ -213,8 +217,15 @@ def compute_temporal_coverage(
     end = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     start = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
 
+    # Guarda None (P2 2026-11-10): con el breaker OPEN `@circuit` devuelve
+    # None y el contrato de estas dos es SatelliteSearchResult; sin la guarda
+    # el `.products` de abajo reventaría con AttributeError.
     s2 = search_sentinel2(bbox, start, end, max_cloud_cover=50.0, limit=50)
     s1 = search_sentinel1_sar(bbox, start, end, limit=50)
+    if s2 is None:
+        s2 = SatelliteSearchResult(products=[], total_found=0, bbox=bbox, date_range=(start, end))
+    if s1 is None:
+        s1 = SatelliteSearchResult(products=[], total_found=0, bbox=bbox, date_range=(start, end))
 
     s2_dates = []
     for p in s2.products:

@@ -40,6 +40,7 @@ from typing import Dict, List, Optional
 import pandas as pd
 
 from sentinel_omega.infrastructure.api._http import get_session
+from sentinel_omega.infrastructure.api.circuit_breaker import circuit
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +76,7 @@ def _por_mes(desde: datetime, hasta: datetime) -> List[tuple[str, str]]:
     return tramos
 
 
+@circuit("wiki")
 def fetch_atencion_wiki(dias: int = 8) -> Optional[pd.DataFrame]:
     """Pageviews diarios (agent=user) del vocabulario solar en en.wikipedia.
 

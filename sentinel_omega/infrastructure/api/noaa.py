@@ -9,6 +9,7 @@ Sources:
 """
 
 import logging
+import signal
 from typing import Optional
 
 import numpy as np
@@ -16,14 +17,16 @@ import pandas as pd
 
 from sentinel_omega.infrastructure.api._http import get_session
 from sentinel_omega.infrastructure.api.circuit_breaker import circuit
+from sentinel_omega.infrastructure.api._redact import sin_credenciales
 
 logger = logging.getLogger(__name__)
 
 NOAA_BASE = "https://services.swpc.noaa.gov/json/"
-TIMEOUT = 15
+# (connect_timeout, read_timeout) — evita colgarse en conexión establecida sin datos
+TIMEOUT = (5, 10)
 
 
-@circuit("noaa")
+@circuit("noaa_kp")
 def fetch_kp_index() -> Optional[pd.DataFrame]:
     """Fetch Kp index from NOAA SWPC. ~6 h de ventana, resolución de 1 minuto.
 
@@ -63,16 +66,18 @@ def fetch_kp_index() -> Optional[pd.DataFrame]:
                 )
             return df[["time_tag", "kp_index"]].sort_values("time_tag")
     except Exception as e:
-        logger.error(f"NOAA Kp fetch failed: {e}")
+        logger.error(f"NOAA Kp fetch failed: {sin_credenciales(e)}")
     return None
 
 
-@circuit("noaa")
+@circuit("noaa_xray")
 def fetch_goes_xray() -> Optional[pd.DataFrame]:
     """Fetch GOES X-ray flux (7-day, 0.1-0.8nm band) for solar flare analysis."""
     url = "https://services.swpc.noaa.gov/json/goes/primary/xrays-7-day.json"
+    signal.signal(signal.SIGALRM, lambda s, f: (_ for _ in ()).throw(Exception("GOES X-ray timeout")))
+    signal.alarm(8)
     try:
-        resp = get_session().get(url, timeout=TIMEOUT)
+        resp = get_session().get(url, timeout=(3, 8))
         resp.raise_for_status()
         # Parse defensivo (2026-10-20): este archivo RODANTE lo reescribe
         # NOAA cada minuto, y ocasionalmente el cuerpo llega con datos
@@ -92,7 +97,7 @@ def fetch_goes_xray() -> Optional[pd.DataFrame]:
                     "(%d chars) — documento completo usado, sobrante descartado",
                     len(resp.text))
             except _json.JSONDecodeError as e:
-                logger.error("GOES X-ray fetch: JSON ilegible: %s", e)
+                logger.error("GOES X-ray fetch: JSON ilegible: %s", sin_credenciales(e))
                 return None
         df = pd.DataFrame(data)
         if "time_tag" in df.columns and "flux" in df.columns:
@@ -114,11 +119,13 @@ def fetch_goes_xray() -> Optional[pd.DataFrame]:
             logger.info(f"Fetched {len(df)} GOES X-ray records")
             return df[["time_tag", "flux", "energy"]].sort_values("time_tag")
     except Exception as e:
-        logger.error(f"GOES X-ray fetch failed: {e}")
-    return None
+        logger.error(f"GOES X-ray fetch failed: {sin_credenciales(e)}")
+        return None
+    finally:
+        signal.alarm(0)
 
 
-@circuit("noaa")
+@circuit("noaa_electron")
 def fetch_electron_flux() -> Optional[pd.DataFrame]:
     """Fetch GOES integral electron flux (relativistic electrons, 6-hour).
 
@@ -138,11 +145,11 @@ def fetch_electron_flux() -> Optional[pd.DataFrame]:
             logger.info(f"Fetched {len(df)} GOES electron flux records")
             return df[["time_tag", "flux"]].sort_values("time_tag")
     except Exception as e:
-        logger.error(f"GOES electron flux fetch failed: {e}")
+        logger.error(f"GOES electron flux fetch failed: {sin_credenciales(e)}")
     return None
 
 
-@circuit("noaa")
+@circuit("noaa_proton")
 def fetch_proton_flux(energy: str = ">=10 MeV") -> Optional[pd.DataFrame]:
     """Fetch GOES integral proton flux for one energy channel.
 
@@ -164,7 +171,7 @@ def fetch_proton_flux(energy: str = ">=10 MeV") -> Optional[pd.DataFrame]:
                 logger.info(f"Fetched {len(df)} GOES proton flux records ({energy})")
                 return df[["time_tag", "flux"]].sort_values("time_tag")
     except Exception as e:
-        logger.error(f"GOES proton flux fetch failed: {e}")
+        logger.error(f"GOES proton flux fetch failed: {sin_credenciales(e)}")
     return None
 
 
@@ -185,7 +192,7 @@ def _rtsw_validas(df: pd.DataFrame) -> pd.DataFrame:
     return df[activa & calidad]
 
 
-@circuit("noaa")
+@circuit("noaa_wind")
 def fetch_solar_wind() -> Optional[pd.DataFrame]:
     """Fetch real-time solar wind data (Bz, speed, density)."""
     url = f"{NOAA_BASE}rtsw/rtsw_wind_1m.json"
@@ -207,11 +214,11 @@ def fetch_solar_wind() -> Optional[pd.DataFrame]:
             logger.info(f"Fetched {len(df)} solar wind records")
             return df[available].sort_values("time_tag")
     except Exception as e:
-        logger.error(f"Solar wind fetch failed: {e}")
+        logger.error(f"Solar wind fetch failed: {sin_credenciales(e)}")
     return None
 
 
-@circuit("noaa")
+@circuit("noaa_mag")
 def fetch_mag_field() -> Optional[pd.DataFrame]:
     """Fetch real-time magnetometer data (Bz GSM component)."""
     url = f"{NOAA_BASE}rtsw/rtsw_mag_1m.json"
@@ -230,5 +237,5 @@ def fetch_mag_field() -> Optional[pd.DataFrame]:
             logger.info(f"Fetched {len(df)} Bz records")
             return df[["time_tag", "bz_gsm"]].sort_values("time_tag")
     except Exception as e:
-        logger.error(f"Magnetometer fetch failed: {e}")
+        logger.error(f"Magnetometer fetch failed: {sin_credenciales(e)}")
     return None

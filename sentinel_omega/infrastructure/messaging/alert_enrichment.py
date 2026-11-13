@@ -4,8 +4,43 @@ from __future__ import annotations
 import json
 import math
 import sqlite3
+import time
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, Optional, Tuple
+
+# P2 2026-11-10: caché en memoria de TBL_NODOS_TOPOLOGIA para `nearest_nodo`
+# (antes: un SELECT de tabla completa por cada alerta). La topología cambia
+# a mano y rara vez; TTL 1 h. `clear_nodos_cache()` existe para los tests.
+_NODOS_CACHE_TTL_S = 3600.0
+_nodos_cache: Dict[str, Any] = {"ts": 0.0, "rows": None}
+
+
+def clear_nodos_cache() -> None:
+    """Vacía la caché de nodos (tests / cambio de topología)."""
+    _nodos_cache["ts"] = 0.0
+    _nodos_cache["rows"] = None
+
+
+def _cargar_nodos(conn: sqlite3.Connection):
+    """Filas de TBL_NODOS_TOPOLOGIA, desde caché si no caducó."""
+    ahora = time.time()
+    if _nodos_cache["rows"] is not None and (ahora - _nodos_cache["ts"]) < _NODOS_CACHE_TTL_S:
+        return _nodos_cache["rows"]
+    try:
+        rows = conn.execute(
+            "SELECT node_id, nombre, lat, lon, region FROM TBL_NODOS_TOPOLOGIA "
+            "WHERE activo IS NULL OR activo=1 OR activo=TRUE"
+        ).fetchall()
+    except Exception:
+        try:
+            rows = conn.execute(
+                "SELECT node_id, nombre, lat, lon, region FROM TBL_NODOS_TOPOLOGIA"
+            ).fetchall()
+        except Exception:
+            return None
+    _nodos_cache["ts"] = ahora
+    _nodos_cache["rows"] = rows
+    return rows
 
 
 def _as_float(v) -> Optional[float]:
@@ -114,18 +149,9 @@ def describe_values(tipo: str, values: Any) -> str:
 
 
 def nearest_nodo(conn: sqlite3.Connection, lat: float, lon: float) -> Optional[Dict[str, Any]]:
-    try:
-        rows = conn.execute(
-            "SELECT node_id, nombre, lat, lon, region FROM TBL_NODOS_TOPOLOGIA "
-            "WHERE activo IS NULL OR activo=1 OR activo=TRUE"
-        ).fetchall()
-    except Exception:
-        try:
-            rows = conn.execute(
-                "SELECT node_id, nombre, lat, lon, region FROM TBL_NODOS_TOPOLOGIA"
-            ).fetchall()
-        except Exception:
-            return None
+    rows = _cargar_nodos(conn)
+    if rows is None:
+        return None
     best = None
     best_d = 1e18
     for r in rows:

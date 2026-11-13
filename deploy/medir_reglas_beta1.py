@@ -28,14 +28,14 @@ import sys
 
 import numpy as np
 
-sys.path.insert(0, "/home/deamon/workspaces")
+sys.path.insert(0, "/home/deamon/Sentinel_Omega")
 
 from sentinel_omega.layers.geodynamic.beta1.agent import (  # noqa: E402
     kp_spectral_features,
 )
 
 DB = sys.argv[1] if len(sys.argv) > 1 else \
-    "/home/deamon/workspaces/sentinel_omega/data/SENTINEL_OMEGA_PRO.db"
+    "/home/deamon/Sentinel_Omega/sentinel_omega/data/SENTINEL_OMEGA_PRO.db"
 
 VENTANA_MUESTRAS = 48       # la del agente: FFT_WINDOW_H
 INTERVALO_H = 3             # KP_SAMPLE_INTERVAL_H

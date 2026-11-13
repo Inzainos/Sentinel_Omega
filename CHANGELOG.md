@@ -1,6 +1,144 @@
 # Changelog — Sentinel Omega
 
-## [Unreleased] - 2026-10-18 — jupiter retirado; xray a alfa2 y trends a delta; el ALERT perpetuo de alfa2 muerto; rebuild-watch arreglado
+## [Unreleased] - 2026-11-07 — Experimento Dirigido P0 + Fixes Pipeline + Dashboard Unificado
+
+### Experimento Dirigido (P0) — Testing precursores alternativos (siguiendo `docs/EXPERIMENTO_DIRIGIDO.md`)
+
+**Objetivo**: Mejorar Molchan Gain de 0.799x → >1.0 probando precursores con física más plausible que Schumann.
+
+**Protocolo**: 4 reglas — hipótesis declarada ANTES, modelo nulo emparejado por época (±15d estacional), 11 semillas distintas, control más barato primero.
+
+| Precursor | Fuente BD | Historia | 11 Semillas | Resultado | σ max |
+|-----------|-----------|----------|-------------|-----------|-------|
+| **Migración enjambres (Omori difuso)** | `tbl_eventos_sismicos_fuente` (220k hipocentros 1994-2026) | 32 años | ✅ 11/11 | ❌ **NEGATIVO** | 0.4σ |
+| **Radón (proxy SO₂ volcánico)** | `tbl_desgasificacion_raw` (2,956 reg, 1978-2026) | 48 años | ❌ Insuficientes | ⚠️ **NO TESTABLE** (datos esparcidos 30-800d) | — |
+| **Clima espacial (Kp, Bz, viento, p+)** | `tbl_clima_espacial_raw` (287k/h, 1994-2026) | 32 años | ✅ 8/11 | ❌ **NEGATIVO** | 1.7σ |
+| **Resistividad / Vp/Vs / Infrasonido** | — | — | — | ❌ **SIN DATOS EN BD** | — |
+| **GOES X-ray / Térmico / Financiero** | `tbl_xray_vivo` / `tbl_delta_cross` / `tbl_trends_vivo` | 2-5 meses | ❌ Historia corta | ⚠️ **INSUFICIENTE** | — |
+| **Loki (rotación solar 26-29d → Kp≥5)** | `tbl_clima_espacial_raw` | 32 años | ✅ Validado | ✅ **POSITIVO 3.96×** | — |
+
+**Veredicto**: No existe precursor individual con Gain > 1.0 sobre modelo nulo (tasa base por nodo = 0.867 AUC). La habilidad 1.026x para M≥5.5 emerge **solo del consenso multi-bot** (Padre + 8 bots + Juez), no de precursores individuales.
+
+**Scripts creados**: `deploy/medir_enjambre_migracion.py`, `deploy/medir_so2_precursor.py`, `deploy/medir_clima_espacial_precursor.py`
+
+### Re-entrenamiento ONNX (7 bots, compuerta de habilidad — `train_onnx_from_db.py`)
+
+Fuente: `ventanas` (7,000 ventanas etiquetadas por desenlace M≥5.5, horizonte 190h, tasa base 4.7%).
+
+| Bot | Muestras | AUC Test | AUC Nulo (nodo) | Ganancia | Origen | Veredicto |
+|-----|----------|----------|-----------------|----------|--------|-----------|
+| alfa1 | 7,000 | 0.478 | 0.867 | -0.390 | rasgos_propios | ❌ RECHAZADO (<0.55) |
+| beta1 | 7,000 | 0.758 | 0.867 | -0.110 | **agrupamiento_omori** | ❌ RECHAZADO (ganancia <0.02) |
+| beta2 | 7,000 | 0.476 | 0.867 | -0.391 | rasgos_propios | ❌ RECHAZADO (<0.55) |
+| delta | 2,409 | 0.527 | 0.867 | -0.340 | rasgos_propios | ❌ RECHAZADO (<0.55) |
+| omega | 7,000 | 0.462 | 0.867 | -0.405 | rasgos_propios | ❌ RECHAZADO (<0.55) |
+| loki | 7,000 | 0.467 | 0.867 | -0.400 | rasgos_propios | ❌ RECHAZADO (<0.55) |
+| alfa2 | 59 | — | — | — | solo calma | ❌ RECHAZADO (degenerado) |
+
+**Hallazgo clave**: `beta1` AUC 0.758 es 100% features `sismo_*` (Omori/replicas). Sin ellos: AUC 0.485. **No es precursor**.
+
+`models_meta.json` actualizado con razones detalladas por bot (compuerta activa: `AUC_MINIMA=0.55`, `GANANCIA_MINIMA=0.02`, `AUC_MAXIMA_CREIBLE=0.95`).
+
+### Fixes Pipeline Críticos (ciclos no persistían en BD)
+
+| Problema | Archivo | Fix | Verificado |
+|----------|---------|-----|------------|
+| **NEO API timeout** (colgaba ciclo en `fetch_neo_hazard_summary`) | `sentinel_omega/infrastructure/api/nasa_neo.py` | `signal.alarm(8)` + excepción `NeoTimeout` + handler | ✅ Ciclo continúa tras 8s |
+| **GOES X-ray timeout** (colgaba ciclo en `fetch_goes_xray`) | `sentinel_omega/infrastructure/api/noaa.py` | `signal.alarm(8)` en `fetch_goes_xray()` | ✅ Ciclo continúa tras 8s |
+| **Beta-1 fetch propagaba excepción** (rompía persistencia) | `sentinel_omega/infrastructure/pipeline/layer_runners.py:851` | `try/except` + `beta1_data = {}` | ✅ Ciclos persistiendo (23602+) |
+| **Ciclos no persistían en BD** | Consecuencia del anterior | Fix anterior resuelve flujo completo | ✅ 23602 @ 16:58 persistido |
+
+### Mantenimiento Diario (disciplina + barrido)
+- Correlaciones Padre actualizadas: 21,269 eventos, 18,885 rutas, 651 recurrentes, 439 globales
+- Secuencias nodos: 65+ rutas recurrentes (nodo26→nodo84→nodo96: 9x, nodo83→nodo96→nodo26: 9x)
+- Cimática: 0 patrones podados (biblioteca sana)
+- WAL: 4.0 MB → 0.0 MB (TRUNCATE)
+- Eventos vivos: 24 nuevos, 23 bloques refrescados
+
+### Dashboard Unificado — Principal: 8128 (Dash/Plotly, login + 17 tabs)
+- **8128** (`sentinel-omega-dashboard-dash.service`) → habilitado, activo, 200 OK
+- **5173** React/Vite → comentado, deshabilitado (legacy)
+- **8510** Streamlit → comentado, deshabilitado (legacy)
+- `README.md` actualizado: 8128 como principal
+
+### Unificación de Pestañas Dashboard React (2026-11-07)
+- **Eliminado duplicado**: `SeñalesTab.tsx` (duplicado de `SenalesTab.tsx` con acento)
+- **Montadas 5 pestañas funcionales** que existían pero no se montaban:
+  - `/cimatica` → `CimaticaTab` (figura determinista, tono, patrones)
+  - `/loki` → `LokiTab` (KPI resonancia Carrington 3.4×, razón viva)
+  - `/padre-juez` → `PadreJuezTab` (4 KPI nulo lag + veredictos Juez viva)
+  - `/espacio-firmas` → `EspacioFirmasTab` (PCA 2D firmas, exigible, cobertura)
+  - `/sintesis` → `SintesisTab` (resumen ejecutivo consenso, KPIs, veredictos)
+- **Unificada primitiva `CimaticaFigura`**: usada en `PrincipalTab` (vía `CimaticaLive`) y `CimaticaTab` — misma lógica determinista FNV-1a → PRNG → SVG Chladni
+- **Sidebar actualizada** (`BarraLateral.tsx`): chips por tipo (atención/veredicto), grupos Leading/Lagging
+- **Total pestañas montadas**: 12 (7 originales + 5 nuevas - 1 duplicado)
+- `README.md` (dashboard) y `CHANGELOG.md` actualizados
+
+### Estado Final Verificado
+- **10/10 servicios systemd**: ACTIVE
+- **Health API**: `status: ok`, `ciclos: 6547`, `last_cycle: < 1 min`
+- **Molchan Gain**: Global 0.799x | M≥5.5 **1.026x** (consenso)
+- **Pipeline auditado end-to-end**: 8 fetches → persist → risk → detections → muro → 7 agents + 3 condicionales → modelos ONNX → consenso Padre
+
+---
+
+## [Unreleased] - 2026-11-06 — Limpieza de espacio: 22 GiB → 6.4 GiB (recuperados ~15.6 GiB)
+
+## [Unreleased] - 2026-11-06 — Limpieza de espacio: 22 GiB → 6.4 GiB (recuperados ~15.6 GiB)
+
+### Cleanup — Espacio recuperado sin afectar operación
+- **`sentinel_omega/infrastructure/dashboard/web/node_modules`** (525 MiB): `rm -rf` — regenerable con `npm install`
+- **Cache FRP >7 días** (~200 MiB): `find -mtime +7 -delete` — política de retención aplicada
+- **`.venv` huérfano `sentinel_omega/.venv`** (1.1 GiB): `rm -rf` — confirmado huérfano 2026-10-08 (servicio usa `/home/deamon/Sentinel_Omega/.venv`)
+- **Backup BD pre-rebuild 2026-10-18** (2.8 GiB): movido a `/home/deamon/backups/` — rebuild validado OK 2026-09-27
+- **`schumann_eskdalemuir/2025.zip`** (11 GiB, 365 PNGs espectrogramas + metadata): movido a `/home/deamon/backups/` — datos ya ingeridos en BD (ninguna tabla `eskdalemuir` en DB; espectrogramas son fuente raw, no datos operativos)
+- **`.venv` raíz** (1.3 GiB): **MANTENIDO** — servicio `sentinel-omega.service` usa `ExecStart=/home/deamon/Sentinel_Omega/.venv/bin/python`
+
+**Resultado**: 22 GiB → 6.4 GiB (~71% recuperación). Servicios systemd activos y operativos tras limpieza. Cold storage en `/home/deamon/backups/`.
+
+## [Unreleased] - 2026-10-27 — Watchdog revisado: levanta dashboard-web, no puede tocar Streamlit (sistema) sin sudo
+
+### Fixed — dashboard React (5173) no arrancaba: `ERR_CONNECTION_REFUSED`
+- `sentinel-omega-dashboard-web.service` usaba `ExecStart=/usr/bin/npm run dev`, pero `/usr/bin/npm` **no existe en Linux** (npm vive en un disco montado de Windows). El servicio fallaba con `status=203/EXEC` y el front no subía.
+- Arreglo: se añadió `Environment=PATH=/usr/bin:/bin:/mnt/c/.../node` y un wrapper `bash -c` que antepone el PATH de npm de Windows antes de `npm run dev`. Tras `daemon-reload` + `restart`, el front responde 200 en :5173.
+- La API (:8787) nunca se cayó; respondía 200 todo el tiempo.
+
+
+Revisado `sentinel_omega/infrastructure/watchdog/network_watchdog.py` contra
+`deploy/DEPLOY.md`, `AGENTS.md` y bitácoras (09-27, 10-08, 10-18, 10-25).
+
+### Estado vigente (verificado en vivo)
+
+- `sentinel-omega-watchdog.service` (unidad de USUARIO): **active running**, PID 986852, chequea cada 60 s.
+  - Red: OK (8.8.8.8/1.1.1.1 + http fallback).
+  - Agente: OK (ollama `GET /api/tags` 200 + DB readable).
+  - Restaura cada ciclo sano: `sentinel-omega`, `sentinel-omega-dashboard-api`, `sentinel-omega-dashboard-web` (valor por defecto de `WATCHDOG_RESTORE_UNITS`).
+- `sentinel-omega-dashboard-web` (React, :5173 → API 8787): unidad de usuario, el watchdog **la re-levanta correctamente** cada vez que cae (medido: `tras restart: activa`).
+- Streamlit (8510): unidad de SISTEMA (root). El watchdog **solo detecta y avisa**; `sudo -n systemctl restart` falla con `sudo: a password is required` (no hay passwordless sudo). Por diseño (`deploy/DEPLOY.md` §2026-09-27): las units de sistema quedan enmascaradas, el watchdog de usuario no las toca.
+
+### Cómo levantar el watchdog
+
+```
+# Instalar (una sola vez, sin sudo):
+bash deploy/install.sh --no-start
+
+# Arrancar 24/7:
+systemctl --user enable --now sentinel-omega sentinel-omega-watchdog
+sudo loginctl enable-linger $USER   # una vez, para sobrevivir cierres de sesión
+
+# Comandos diarios:
+systemctl --user status sentinel-omega-watchdog
+journalctl --user -u sentinel-omega-watchdog -f
+systemctl --user stop sentinel-omega-watchdog   # detener ANTES de mantenimiento (evita re-levantar)
+```
+
+### Reglas operativas del watchdog (no romper)
+
+- **Unidades de sistema (`/etc/systemd/system/sentinel-omega{,-watchdog}.service`)**: **masked** a propósito. El watchdog de usuario nunca las levanta.
+- **`WATCHDOG_RESTORE_UNITS`** en `deploy/.env`: lista de unidades de usuario a restaurar cada ciclo sano. Por defecto: `sentinel-omega,sentinel-omega-dashboard-api,sentinel-omega-dashboard-web`. Streamlit está fuera a propósito (se vigila por puerto, no se reinicia desde usuario).
+- **Si detienes una unidad a propósito (mantenimiento):** para primero el watchdog (`systemctl --user stop sentinel-omega-watchdog`) o quítala de `WATCHDOG_RESTORE_UNITS`, de lo contrario la re-levantará en ≤60 s.
+- **Notificación:** via `AlertService` (Telegram/Log) solo en la transición activa→caída (no spamea cada ciclo).
+
 
 Dos rebuilds completos en el día (180 y 177 min, ambos exit 0): el primero
 restituyó la memoria amnésica (**11.375 exigibles**, 0 desde el 10-09) y

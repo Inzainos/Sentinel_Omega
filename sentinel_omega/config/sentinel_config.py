@@ -95,7 +95,7 @@ class WalConfig:
     instantánea abierta y las páginas no se pueden reclamar. Una copia hecha
     con `cp` del .db en ese estado NO incluye el WAL, y sale sin datos.
     """
-    umbral_mb: float = 800.0      # el disparador, revisado en cada ciclo
+    umbral_mb: float = 200.0      # P2 2026-11-10: bajado de 800; el disparador, revisado en cada ciclo
     vaciado_diario: bool = True   # y a medianoche, pase lo que pase
 
 
@@ -191,8 +191,11 @@ def load_config(yaml_path: Optional[str] = None) -> SentinelOmegaConfig:
                         setattr(cfg.juez, k, v)
             if "telegram" in data:
                 # env vars take precedence, so only set if env not set
+                # enabled: false en yaml NO apaga Telegram (ver comentario en sentinel.yaml:27-31)
+                # el interruptor real es SENTINEL_DRY_RUN + presencia de credenciales
+                telegram_configured = bool(os.environ.get("TELEGRAM_BOT_TOKEN") and os.environ.get("TELEGRAM_CHAT_ID"))
                 for k, v in data["telegram"].items():
-                    if k in ("bot_token", "chat_id") and os.environ.get(f"TELEGRAM_{k.upper()}"):
+                    if k in ("bot_token", "chat_id", "enabled") and telegram_configured:
                         continue
                     if hasattr(cfg.telegram, k):
                         try: setattr(cfg.telegram, k, v)

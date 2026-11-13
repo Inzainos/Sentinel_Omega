@@ -22,6 +22,7 @@ Decision logic (calibrated 2026-10-18 against tbl_cobertura_satelital_*):
 from typing import Any, Dict, List, Optional
 import sqlite3
 import statistics
+import time
 import numpy as np
 from pathlib import Path
 from sentinel_omega.core.shared.agent_base import BaseAgent, AgentSignal, SignalType
@@ -34,6 +35,13 @@ XRAY_CLASE_X = 1e-4
 # espacial: un precursor real es regional, no un nodo suelto). Con >=1 es
 # WATCH. Medido sobre las horas vivas: 1/15 bloques cruza el >=3.
 THERMAL_ALERT_ZONAS = 3
+
+# P2 2026-11-10: el baseline se refresca cada 24 h (antes: solo en __init__,
+# y el launcher vive días mientras la tabla histórica crece a diario). El
+# refresh NO toca los umbrales de voto (clases NOAA M/X, THERMAL_ALERT_ZONAS):
+# solo actualiza el máximo térmico histórico por zona. Si el refresh falla
+# o viene vacío se conserva el baseline anterior.
+BASELINE_REFRESH_S = 86400
 
 
 class Alfa2Agent(BaseAgent):
@@ -55,6 +63,23 @@ class Alfa2Agent(BaseAgent):
         self._xray_mean: Optional[float] = None
         self._baseline_stats: Optional[Dict[str, Dict[str, float]]] = None
         self._baseline_stats = self._baseline_desde_db() or self._default_baseline()
+        self._baseline_ts = time.time()  # P2 2026-11-10: último cálculo de baseline
+
+    def _maybe_refresh_baseline(self) -> None:
+        """Refresca el baseline si pasaron 24 h desde el último cálculo.
+        El timestamp se actualiza en el intento (éxito o fallo) para no
+        reintentar en cada ciclo; si falla o viene vacío se conserva el
+        baseline anterior y se avisa."""
+        ahora = time.time()
+        if ahora - self._baseline_ts < BASELINE_REFRESH_S:
+            return
+        self._baseline_ts = ahora
+        nuevo = self._baseline_desde_db()
+        if nuevo:
+            self._baseline_stats = nuevo
+            self.logger.info("Alfa-2: baseline refrescado (%d zonas)", len(nuevo))
+        else:
+            self.logger.warning("Alfa-2: refresh de baseline falló/vacío; se conserva el anterior")
 
     def _baseline_desde_db(self) -> Optional[Dict[str, Dict[str, float]]]:
         """Mean/std per zone (obs, clarity) + per-zone thermal HISTORIC MAX
@@ -197,6 +222,7 @@ class Alfa2Agent(BaseAgent):
         return degradadas
 
     def analyze(self) -> AgentSignal:
+        self._maybe_refresh_baseline()  # P2 2026-11-10: baseline de 24 h, no de días
         if not self._cobertura_data and self._xray_max is None:
             return self.emit_signal(SignalType.NO_SIGNAL, 0.0, reasoning="No satellite coverage / xray data")
 
@@ -216,6 +242,8 @@ class Alfa2Agent(BaseAgent):
             "xray_mean": self._xray_mean,
             "cobertura_degradada": degradadas,
             "baseline_source": "db_fresh",
+            # P2 2026-11-10: edad del baseline en horas (desde el último cálculo)
+            "baseline_age_h": round((time.time() - self._baseline_ts) / 3600.0, 1),
         }
 
         # --- X-ray (NOAA flare classes: umbrales físicos) ---

@@ -183,10 +183,16 @@ def test_locf_de_la_base_va_marcado(tmp_path):
     assert s is not None and s.es_locf is True
 
 
-def test_wpc_en_vivo_no_va_marcado_como_locf(wpc):
+def test_wpc_en_vivo_no_va_marcado_como_locf(wpc, tmp_path):
     wpc["last_modified"] = datetime.now(timezone.utc)
     wpc["valor"] = (8.31, 24.0)
     import unittest.mock as um
+    # Create in-memory DB with empty daily table so fallback check passes
+    db_path = tmp_path / "test.db"
+    conn = sqlite3.connect(str(db_path))
+    conn.execute("CREATE TABLE tbl_schumann_diario (fecha TEXT PRIMARY KEY, actividad REAL, fuente TEXT, tomado_en TEXT DEFAULT (datetime('now')))")
+    conn.commit()
+    conn.close()
     with um.patch.object(sch, "ultima_lectura_viva", return_value=None):
-        s = fetchers._schumann_from_wpc()
+        s = fetchers._schumann_from_wpc(db_path=db_path)
     assert s is not None and s.es_locf is False

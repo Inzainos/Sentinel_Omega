@@ -51,13 +51,15 @@ class AllONNXModelsConfig:
 
     models_dir: str = "sentinel_omega/models"
 
+    # APAGADO por decisión de Elán 2026-11-12 (D9): AUC 0.478 < azar, votaba WATCH 0.69 en calma.
+    # Vota solo por REGLA como los otros 6. Reentrenar solo después de resolver 22 y 26.
     alfa1: ONNXModelConfig = field(default_factory=lambda: ONNXModelConfig(
         name="alfa1",
         model_path="alfa1_spaceweather_rf.onnx",
         input_features=10,
         output_shape=(1, 2),
         confidence_threshold=0.6,
-        enabled=True
+        enabled=False
     ))
 
     # alfa2 VOTA (decisión del operador, 2026-10-02) pero vota con su REGLA:

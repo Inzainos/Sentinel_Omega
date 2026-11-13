@@ -171,7 +171,10 @@ def _build_drivers(data) -> Dict[str, np.ndarray]:
         drivers["solar_wind_speed"] = sw.solar_wind_speed
     sch = data.schumann
     if sch is not None:
-        drivers["schumann_freq_dev"] = sch.freq_deviation
+        # T-2 (2026-11-10): schumann_freq_dev RETIRADO mientras no haya Hz
+        # real — Tomsk no mide Hz desde 2026-10-09 y el fetcher fabricaba
+        # 7.83 -> freq_deviation 0.0 constante -> pares NaN. Solo la
+        # amplitud (actividad real) queda como driver Schumann.
         drivers["schumann_amplitude"] = sch.amplitude
     tr = data.trends
     if tr is not None:
@@ -276,7 +279,7 @@ def compute_cross(data, window_days: Optional[int] = None) -> CrossResult:
 
     # --- Aggregate coupling scores ---
     GEOMAG_DRIVERS = {"kp_max", "bz_min", "solar_wind_speed"}
-    SCHUMANN_DRIVERS = {"schumann_freq_dev", "schumann_amplitude"}
+    SCHUMANN_DRIVERS = {"schumann_amplitude"}  # T-2: sin freq_dev (sin Hz real)
     SENTIMENT_DRIVERS = {"trends_stress"}
     FINANCIAL_TARGETS = {"vix", "btc_return", "spy_return", "btc_eth_ratio", "gold_return"}
 

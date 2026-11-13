@@ -14,7 +14,9 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import pandas as pd
-import requests
+from sentinel_omega.infrastructure.api._http import get_session
+from sentinel_omega.infrastructure.api.circuit_breaker import circuit
+from sentinel_omega.infrastructure.api._redact import sin_credenciales
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +24,7 @@ GFZ_URL = "https://kp.gfz.de/app/json/"
 TIMEOUT = 30
 
 
+@circuit("gfz")
 def fetch_kp_history(days: int = 90) -> Optional[pd.DataFrame]:
     """Fetch the 3-hourly Kp index for the last `days` days from GFZ Potsdam."""
     end = datetime.now(timezone.utc)
@@ -32,7 +35,7 @@ def fetch_kp_history(days: int = 90) -> Optional[pd.DataFrame]:
         "index": "Kp",
     }
     try:
-        resp = requests.get(GFZ_URL, params=params, timeout=TIMEOUT)
+        resp = get_session().get(GFZ_URL, params=params, timeout=TIMEOUT)
         resp.raise_for_status()
         data = resp.json()
         kp = data.get("Kp")
@@ -45,5 +48,5 @@ def fetch_kp_history(days: int = 90) -> Optional[pd.DataFrame]:
         logger.info(f"Fetched {len(df)} GFZ Kp records over {days} days")
         return df
     except Exception as e:  # noqa: BLE001 — degrade cleanly
-        logger.error(f"GFZ Kp fetch failed: {e}")
+        logger.error(f"GFZ Kp fetch failed: {sin_credenciales(e)}")
         return None

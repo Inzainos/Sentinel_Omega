@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from sentinel_omega.infrastructure.api._http import get_session
+from sentinel_omega.infrastructure.api._redact import sin_credenciales
 
 logger = logging.getLogger(__name__)
 
@@ -94,10 +95,21 @@ class AtmosphericReading:
 
 
 def _get_api_key() -> Optional[str]:
+    # T-1 parcial (tuning P0-C, 2026-11-10): el warning se emite UNA vez por
+    # proceso. Antes, cada ciclo disparaba ~20+ warnings (21,700 en el log
+    # vivo a 2026-11-10 14:24) sin aportar nada nuevo. La clave en sí NO se
+    # pone aquí (D3, decisión de Elán pendiente); sin llave, beta2 sigue
+    # ciego y los fetchers devuelven None como antes.
+    global _API_KEY_WARNING_EMITIDO
     key = os.environ.get("OPENWEATHERMAP_KEY")
-    if not key:
+    if not key and not _API_KEY_WARNING_EMITIDO:
+        _API_KEY_WARNING_EMITIDO = True
         logger.warning("OPENWEATHERMAP_KEY not set")
     return key
+
+
+# Bandera del warning 1× de `_get_api_key` (T-1 parcial, P0-C).
+_API_KEY_WARNING_EMITIDO = False
 
 
 def fetch_weather(
@@ -180,7 +192,7 @@ def fetch_weather(
         )
         return reading
     except Exception as e:
-        logger.error(f"OWM fetch failed for {station_name}: {e}")
+        logger.error(f"OWM fetch failed for {station_name}: {sin_credenciales(e)}")
         return None
 
 
@@ -224,7 +236,7 @@ def fetch_air_quality(
         logger.info(f"OWM AQ: CO={result['co']}, SO2={result['so2']}, AQI={result['aqi']}")
         return result
     except Exception as e:
-        logger.error(f"OWM air quality fetch failed: {e}")
+        logger.error(f"OWM air quality fetch failed: {sin_credenciales(e)}")
         return None
 
 

@@ -17,7 +17,7 @@ from __future__ import annotations
 import sqlite3
 import sys
 
-DB = "/home/deamon/workspaces/sentinel_omega/data/SENTINEL_OMEGA_PRO.db"
+DB = "/home/deamon/Sentinel_Omega/sentinel_omega/data/SENTINEL_OMEGA_PRO.db"
 
 
 def seccion(t: str) -> None:
@@ -69,7 +69,7 @@ def main() -> int:
               f"{str(r['consolidadas_sin_exigir'] if r['consolidadas_sin_exigir'] is not None else '—'):>19}")
 
     seccion("3. LAG --- cobertura y el nulo, sobre las exigibles")
-    sys.path.insert(0, "/home/deamon/workspaces")
+    sys.path.insert(0, "/home/deamon/Sentinel_Omega")
     try:
         from sentinel_omega.core.firmas.signature_engine import resumen_nulo_lag
         nl = resumen_nulo_lag(c)
@@ -109,7 +109,7 @@ def main() -> int:
         import json
         from pathlib import Path
         meta = json.loads(
-            (Path("/home/deamon/workspaces/sentinel_omega/models")
+            (Path("/home/deamon/Sentinel_Omega/sentinel_omega/models")
              / "models_meta.json").read_text())
         comp = meta.get("compuerta") or {}
         print(f"  metadato de {str(meta.get('retrained_at'))[:19]}")

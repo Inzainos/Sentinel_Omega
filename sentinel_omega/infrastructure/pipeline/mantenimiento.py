@@ -43,6 +43,7 @@ ESPERA_CANDADO_S = 120
 # el 2026-10-02: 13.571 commits = 207,6 s de 286,1 s). Ver el docstring de
 # `conexion_de_lote` para la medicion completa y lo que se canjea.
 from sentinel_omega.infrastructure.database.schema import conexion_de_lote
+from sentinel_omega.infrastructure.api._redact import sin_credenciales
 
 logger = logging.getLogger(__name__)
 
@@ -201,7 +202,7 @@ def barrido_diario(db_path: str, dias_full: int = DIAS_RETENCION_FULL,
             stats["cimatica_podados"] = poda_cimatica(conn_poda)
             conn_poda.close()
         except Exception as e:
-            logger.warning(f"Poda cimática falló (non-blocking): {e}")
+            logger.warning(f"Poda cimática falló (non-blocking): {sin_credenciales(e)}")
 
     logger.info(f"Barrido diario: {stats}")
     
@@ -228,7 +229,7 @@ def barrido_diario(db_path: str, dias_full: int = DIAS_RETENCION_FULL,
                 else:
                     logger.info("Vaciado diario del WAL desactivado por configuración")
             except Exception as e:  # noqa: BLE001 — el barrido sigue sin esto
-                logger.warning("Vaciado del WAL falló (non-blocking): %s", e)
+                logger.warning("Vaciado del WAL falló (non-blocking): %s", sin_credenciales(e))
 
             # La foto del perfil de competencia, una por barrido. Sin historia, el
             # Padre solo puede reaccionar al ultimo numero y un bot que empeora
@@ -239,7 +240,7 @@ def barrido_diario(db_path: str, dias_full: int = DIAS_RETENCION_FULL,
                 stats["competencia_guardada"] = guardar_competencia(_c)
                 _c.close()
             except Exception as e:  # noqa: BLE001 — el barrido sigue sin esto
-                logger.warning("No se pudo guardar la competencia: %s", e)
+                logger.warning("No se pudo guardar la competencia: %s", sin_credenciales(e))
 
         # Promover en seco cuenta lo que entraría (promover_eventos_vivos ya
         # respeta dry_run y no escribe).
@@ -258,13 +259,13 @@ def barrido_diario(db_path: str, dias_full: int = DIAS_RETENCION_FULL,
                 )
                 stats["aprendizaje"] = entrenar_incremental(db_path)
             except Exception as e:  # noqa: BLE001 — el barrido sigue sin esto
-                logger.warning("Aprendizaje incremental falló (non-blocking): %s", e)
+                logger.warning("Aprendizaje incremental falló (non-blocking): %s", sin_credenciales(e))
                 stats["aprendizaje"] = {"error": f"{type(e).__name__}: {e}"}
         stats["volcado_vivo"] = volcar_telemetria_viva(
             db_path, run_cascada=True, dry_run=dry_run
         )
     except Exception as e:
-        logger.warning(f"Volcado telemetría viva falló (no bloquea barrido): {e}")
+        logger.warning(f"Volcado telemetría viva falló (no bloquea barrido): {sin_credenciales(e)}")
         stats["volcado_vivo"] = {"error": str(e)}
 
     return stats
@@ -1554,7 +1555,7 @@ def promover_eventos_vivos(db_path: str, dry_run: bool = False) -> Dict:
         if not dry_run:
             conn.commit()
     except sqlite3.Error as e:
-        logger.warning("promover_eventos_vivos falló (non-blocking): %s", e)
+        logger.warning("promover_eventos_vivos falló (non-blocking): %s", sin_credenciales(e))
     finally:
         conn.close()
     logger.info(
@@ -1642,7 +1643,7 @@ def volcar_telemetria_viva(
         stats["schumann_movidos"] = len(rows)
         logger.info(f"Volcado Schumann: {len(rows)} filas → enjambre (corte={corte_blk})")
     except sqlite3.Error as e:
-        logger.warning(f"Volcado Schumann falló: {e}")
+        logger.warning(f"Volcado Schumann falló: {sin_credenciales(e)}")
 
     # ── 2) delta_cross → histórico ──
     try:
@@ -1669,7 +1670,7 @@ def volcar_telemetria_viva(
         stats["delta_movidos"] = len(rows)
         logger.info(f"Volcado delta_cross: {len(rows)} filas → histórico")
     except sqlite3.Error as e:
-        logger.warning(f"Volcado delta_cross falló: {e}")
+        logger.warning(f"Volcado delta_cross falló: {sin_credenciales(e)}")
 
     # ── 3) cobertura satelital → histórico (alfa2 sigue leyendo vivo reciente) ──
     try:
@@ -1695,7 +1696,7 @@ def volcar_telemetria_viva(
         stats["cobertura_movidos"] = len(rows)
         logger.info(f"Volcado cobertura: {len(rows)} filas → histórico")
     except sqlite3.Error as e:
-        logger.warning(f"Volcado cobertura falló: {e}")
+        logger.warning(f"Volcado cobertura falló: {sin_credenciales(e)}")
 
     # ── 4) Log ──
     if not dry_run:
@@ -1784,7 +1785,7 @@ def volcar_telemetria_viva(
             else:
                 logger.warning("topologia_cascada.py no encontrado — cascada omitida")
         except Exception as e:
-            logger.warning(f"Cascada tras volcado falló: {e}")
+            logger.warning(f"Cascada tras volcado falló: {sin_credenciales(e)}")
             stats["cascada_ok"] = 0
 
     logger.info(f"Volcado telemetría 24h completo: {stats}")

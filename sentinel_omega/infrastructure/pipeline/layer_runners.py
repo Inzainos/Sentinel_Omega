@@ -12,6 +12,7 @@ Hierarchical validation:
 
 import logging
 import math
+import signal
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -838,10 +839,29 @@ class GeodynamicLayerRunner:
 
         self._bind_locf()
 
-        alfa1_data = self.pipeline.fetch_alfa1_data()
-        beta1_data = self.pipeline.fetch_beta1_data()
-        beta2_data = self.pipeline.fetch_beta2_data()
-        delta_data = self.pipeline.fetch_delta_data()
+        # T-4 (2026-11-10): fail-soft simetrico — alfa1/beta2/delta con
+        # el mismo try/except que ya tenian beta1 y jupiter. Un fetch que
+        # revienta ya no aborta el ciclo entero.
+        try:
+            alfa1_data = self.pipeline.fetch_alfa1_data()
+        except Exception as e:
+            logger.warning(f"Alfa-1 fetch failed (non-blocking): {e}")
+            alfa1_data = {}
+        try:
+            beta1_data = self.pipeline.fetch_beta1_data()
+        except Exception as e:
+            logger.warning(f"Beta-1 fetch failed (non-blocking): {e}")
+            beta1_data = {}
+        try:
+            beta2_data = self.pipeline.fetch_beta2_data()
+        except Exception as e:
+            logger.warning(f"Beta-2 fetch failed (non-blocking): {e}")
+            beta2_data = {}
+        try:
+            delta_data = self.pipeline.fetch_delta_data()
+        except Exception as e:
+            logger.warning(f"Delta fetch failed (non-blocking): {e}")
+            delta_data = {}
 
         # GOES X-ray + Google Trends (2026-10-18: jupiter RETIRADO; el fetch
         # y la persistencia SIGUEN porque alimentan la memoria de alfa2
@@ -906,7 +926,31 @@ class GeodynamicLayerRunner:
                 zonas = zonas_a_medir(conn_z)
                 logger.info("Alfa-2: midiendo %d zonas de la rotación: %s",
                             len(zonas), ", ".join(zonas))
-                alfa2_data = self.pipeline.fetch_alfa2_data(zones=zonas)
+                # EODAG/ESA Sentinel puede colgarse sin timeout; acotar a 180s
+                # (múltiples búsquedas S1/S2/FRP por zona × 3 zonas = 6-9 llamadas API secuenciales,
+                # cada una 15-20s → total típico 90-180s). Usar thread-based timeout
+                # para evitar conflicto SIGALRM con launcher.
+                import threading
+                alfa2_exception = []
+                alfa2_result = {}
+
+                def _alfa2_fetch():
+                    try:
+                        alfa2_result['data'] = self.pipeline.fetch_alfa2_data(zones=zonas)
+                    except Exception as e:
+                        alfa2_exception.append(e)
+
+                alfa2_thread = threading.Thread(target=_alfa2_fetch, daemon=True)
+                alfa2_thread.start()
+                alfa2_thread.join(timeout=180)
+
+                if alfa2_thread.is_alive():
+                    logger.warning("Alfa-2 timeout (180s) — eodag colgado, continuando sin datos satelitales")
+                    alfa2_data = {}
+                elif alfa2_exception:
+                    raise alfa2_exception[0]
+                else:
+                    alfa2_data = alfa2_result.get('data', {})
                 # El X-ray de GOES viaja con alfa2 (decisión del operador,
                 # 2026-10-18): el bot satelital decide con la señal satelital.
                 if isinstance(alfa2_data, dict) and atencion_data:
@@ -974,7 +1018,20 @@ class GeodynamicLayerRunner:
         # que no opina no aporta, y tampoco se puede corregir.
         self._aplicar_modelos(signals)
 
-        consensus = self.padre.evaluate_consensus(signals)
+        try:
+            consensus = self.padre.evaluate_consensus(signals)
+        except Exception as e:
+            # T-4 (2026-11-10): el consenso no puede tumbar el ciclo — el
+            # Padre ya devuelve este mismo NO_SIGNAL cuando no hay senales.
+            logger.warning(f"Padre consensus failed (non-blocking): {e}")
+            consensus = ConsensusResult(
+                consensus_reached=False,
+                final_signal=SignalType.NO_SIGNAL,
+                confidence=0.0,
+                agent_signals=signals,
+                veto_active=True,
+                veto_reason=f"evaluate_consensus failed: {type(e).__name__}",
+            )
         consensus.precursor_risk = risk
         consensus.precursor_detections = detections
         # Exponer señales por bot para registrar_prediccion en launcher

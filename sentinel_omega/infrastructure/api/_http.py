@@ -29,12 +29,21 @@ logger = logging.getLogger(__name__)
 _RETRY_STATUSES = frozenset([429, 500, 502, 503, 504])
 
 # 3 retries → waits ~1s, ~2s, ~4s between attempts (backoff_factor=1).
+# Fix B (2026-11-10, CYCLE TIMEOUT NEO/429): `respect_retry_after_header`
+# es False a propósito — urllib3 duerme el `Retry-After` SIN tope (un 429
+# con `Retry-After: 2074` durmió 2074 s al worker y mató el ciclo 4 veces
+# seguidas). Con el header ignorado, el peor caso es backoff acotado por
+# `backoff_max=10`: 3 reintentos ≈ 1+2+4 s de sueño + 4 intentos de socket
+# (cada uno acotado por el `timeout` del llamador), siempre dentro del
+# presupuesto del ciclo (420 s). Protege a TODOS los fetchers (OWM incl.).
 _RETRY = Retry(
     total=3,
     backoff_factor=1,
+    backoff_max=10,
     status_forcelist=_RETRY_STATUSES,
     allowed_methods=["GET", "POST"],
     raise_on_status=False,   # let caller call raise_for_status()
+    respect_retry_after_header=False,
 )
 
 _session: requests.Session | None = None

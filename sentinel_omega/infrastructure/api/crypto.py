@@ -16,6 +16,8 @@ from typing import Dict, List, Optional
 import numpy as np
 import pandas as pd
 from sentinel_omega.infrastructure.api._http import get_session
+from sentinel_omega.infrastructure.api._redact import sin_credenciales
+from sentinel_omega.infrastructure.api.circuit_breaker import circuit
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +55,7 @@ def _coingecko_get(url: str):
     return get_session().get(url, timeout=TIMEOUT)
 
 
+@circuit("crypto")
 def fetch_yahoo_chart(
     symbol: str,
     period1: int,
@@ -91,10 +94,11 @@ def fetch_yahoo_chart(
         logger.info(f"Yahoo Finance: {symbol} — {len(df)} records")
         return df
     except Exception as e:
-        logger.error(f"Yahoo Finance fetch failed for {symbol}: {e}")
+        logger.error(f"Yahoo Finance fetch failed for {symbol}: {sin_credenciales(e)}")
     return None
 
 
+@circuit("crypto")
 def fetch_coingecko_market_chart(
     coin_id: str = "bitcoin",
     vs_currency: str = "usd",
@@ -119,10 +123,11 @@ def fetch_coingecko_market_chart(
         logger.info(f"CoinGecko: {coin_id} — {len(df)} price records")
         return df
     except Exception as e:
-        logger.error(f"CoinGecko fetch failed for {coin_id}: {mask_coingecko_key(e)}")
+        logger.error(f"CoinGecko fetch failed for {coin_id}: {sin_credenciales(mask_coingecko_key(e))}")
     return None
 
 
+@circuit("crypto")
 def fetch_coingecko_dominance() -> Optional[Dict[str, float]]:
     """Fetch BTC and ETH dominance percentages from CoinGecko."""
     url = f"{COINGECKO_BASE_URL}/global"
@@ -133,10 +138,11 @@ def fetch_coingecko_dominance() -> Optional[Dict[str, float]]:
         logger.info(f"CoinGecko dominance: BTC={data.get('btc', 0):.1f}%")
         return data
     except Exception as e:
-        logger.error(f"CoinGecko dominance fetch failed: {mask_coingecko_key(e)}")
+        logger.error(f"CoinGecko dominance fetch failed: {sin_credenciales(mask_coingecko_key(e))}")
     return None
 
 
+@circuit("crypto")
 def fetch_binance_klines(
     symbol: str = "BTCUSDT",
     interval: str = "1d",
@@ -160,10 +166,11 @@ def fetch_binance_klines(
         logger.info(f"Binance: {symbol} — {len(df)} klines")
         return df[["timestamp", "open", "high", "low", "close", "volume"]]
     except Exception as e:
-        logger.error(f"Binance fetch failed for {symbol}: {e}")
+        logger.error(f"Binance fetch failed for {symbol}: {sin_credenciales(e)}")
     return None
 
 
+@circuit("crypto")
 def fetch_fear_greed_index() -> Optional[Dict]:
     """Fetch Crypto Fear & Greed Index (alternative.me, public)."""
     url = "https://api.alternative.me/fng/?limit=30&format=json"
@@ -181,7 +188,7 @@ def fetch_fear_greed_index() -> Optional[Dict]:
             logger.info(f"Fear & Greed: {result['value']} ({result['classification']})")
             return result
     except Exception as e:
-        logger.error(f"Fear & Greed fetch failed: {e}")
+        logger.error(f"Fear & Greed fetch failed: {sin_credenciales(e)}")
     return None
 
 

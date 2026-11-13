@@ -143,5 +143,6 @@ def marea_para_ciclo(momento: Optional[object] = None) -> Dict[str, float]:
     import datetime as _dt
 
     if momento is None:
-        momento = _dt.datetime.utcnow()
+        # P2 2026-11-10: utcnow() deprecado; ephem recibe naive -> naive-equivalente (mismo valor)
+        momento = _dt.datetime.now(_dt.timezone.utc).replace(tzinfo=None)
     return marea_ventana(momento, horas=24)

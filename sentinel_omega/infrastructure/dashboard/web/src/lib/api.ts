@@ -12,6 +12,18 @@
  * ok, auditoria, ciclo, senales, tono, cimatica_top…) — NO a /api/consenso,
  * que es otro contrato. Corregido tras el hallazgo del 10-22.
  */
+export interface Overview {
+  ok: boolean
+  counts?: { nodos: number; sismos_m45: number }
+  fantasma?: { value: number; nivel_riesgo: string }
+  muro?: { walls_active: number; muro_breach: boolean }
+  risk_distribution?: Record<string, number>
+  cycles?: Array<{ fantasma: number }>
+  error?: string
+  loading?: boolean
+  data?: any
+}
+
 const BASE = import.meta.env.VITE_API_BASE ?? ""
 
 export async function apiRequest(method: string, path: string, body?: any): Promise<any> {
@@ -40,6 +52,7 @@ export const api = {
   overview: () => apiGet("/api/overview"),
   estadoVivo: () => apiGet("/api/estado-vivo"),
   unificado: () => apiGet("/api/unificado"),
+  estadoSistemaUnificado: () => apiGet("/api/estado-sistema-unificado"),
   agente: () => apiGet("/api/agente"),
   ask: (question: string) => apiPost("/api/ask", { question }),
 
@@ -78,9 +91,12 @@ export const api = {
   correlaciones: () => apiGet("/api/correlaciones"),
   consenso: (limit = 50) => apiGet(`/api/consenso?limit=${limit}`),
   heatmaps: () => apiGet("/api/heatmaps"),
+  firmasEspacio: () => apiGet("/api/firmas-espacio"),
 
   // ── Reportes y estado de canales ──────────────────────────────────────
   reportes: (name?: string) => apiGet(`/api/reportes${name ? `?name=${encodeURIComponent(name)}` : ""}`),
+  reportesExport: (formato = "json", nombre?: string) =>
+    apiGet(`/api/reportes/export?formato=${formato}${nombre ? `&nombre=${encodeURIComponent(nombre)}` : ""}`),
   telegramStatus: () => apiGet("/api/telegram/status"),
 
   // ── Aliases de la reestructuración (los mantengo: sus tabs los usan) ──

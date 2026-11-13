@@ -190,5 +190,6 @@ class TestEntrenarCimatica:
         conn2 = __import__("sqlite3").connect(db_path)
         filas = conn2.execute(
             "SELECT ambito, event_class FROM tbl_cimatica_patrones").fetchall()
-        assert ("general", "SISMO_M5") in filas
-        assert ("nodo", "SISMO_M5") in filas
+        # M5.2 is now SISMO_M5_low (5.0-5.49: observed, not enforceable)
+        assert ("general", "SISMO_M5_low") in filas
+        assert ("nodo", "SISMO_M5_low") in filas

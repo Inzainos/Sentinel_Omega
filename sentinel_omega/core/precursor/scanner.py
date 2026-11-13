@@ -35,6 +35,10 @@ from sentinel_omega.core.precursor.precursor_types import (
 
 logger = logging.getLogger(__name__)
 
+# P2 2026-11-10: TSUNAMI solo cuenta sismos dentro de esta ventana (días).
+# Un M7 de hace un mes no es un precursor de hoy.
+TSUNAMI_VENTANA_DIAS = 7
+
 # Precipitation scanner confidence thresholds
 _PREC_HUMIDITY_HIGH = 80.0
 _PREC_CLOUDS_HIGH = 70.0
@@ -585,6 +589,39 @@ class PrecursorScanner:
         if not np.isfinite(depth_km):
             return []
 
+        # P2 2026-11-10: acotar a sismos RECIENTES. beta1 trae
+        # "seismic_events" con timestamp (epoch) por sismo; si está presente
+        # se usa el sismo de mayor magnitud DENTRO de la ventana y su propia
+        # profundidad. Sin esa lista (llamadores viejos / tests) se conserva
+        # el comportamiento anterior y se deja un warning.
+        edad_max_dias = None
+        events = beta1_data.get("seismic_events") if isinstance(beta1_data, dict) else None
+        if events:
+            ahora = time.time()
+            recientes = []
+            for e in events:
+                if not isinstance(e, dict):
+                    continue
+                try:
+                    t_ev = float(e.get("timestamp"))
+                    mag_ev = float(e.get("magnitude"))
+                except (TypeError, ValueError):
+                    continue
+                if ahora - TSUNAMI_VENTANA_DIAS * 86400 <= t_ev <= ahora:
+                    recientes.append((mag_ev, e, t_ev))
+            if not recientes:
+                return []
+            max_mag, ev_max, t_max = max(recientes, key=lambda p: p[0])
+            edad_max_dias = (ahora - t_max) / 86400.0
+            try:
+                depth_ev = float(ev_max.get("depth_km"))
+                if np.isfinite(depth_ev):
+                    depth_km = depth_ev
+            except (TypeError, ValueError):
+                pass  # el sismo ganador no trae profundidad: queda la de beta1
+        else:
+            logger.warning("TSUNAMI sin seismic_events: fallback a magnitudes+max_quake_depth_km (sin ventana temporal)")
+
         if not detect_tsunami_potential(max_mag, depth_km):
             return []
 
@@ -604,16 +641,25 @@ class PrecursorScanner:
             values={
                 "magnitude": max_mag,
                 "depth_km": depth_km,
+                # edad en días del sismo que disparó el aviso (None en fallback)
+                "max_quake_age_days": round(edad_max_dias, 2) if edad_max_dias is not None else None,
             },
         )]
 
     def _scan_financial_correlation(
         self, financial_data: Dict[str, Any]
     ) -> List[PrecursorDetection]:
-        fear_greed = financial_data.get("fear_greed", 50)
-        vix = financial_data.get("vix", 20.0)
-        btc_change = financial_data.get("btc_change_pct", 0.0)
+        # P2 2026-11-10: sin defaults inventados. Si falta alguno de los
+        # tres datos de mercado (fear_greed, vix, btc_change_pct) NO se emite
+        # correlación: antes 50/20.0/0.0 fabricaban "neutral" con datos
+        # ausentes. market_signal sí conserva su default "neutral".
+        fear_greed = financial_data.get("fear_greed")
+        vix = financial_data.get("vix")
+        btc_change = financial_data.get("btc_change_pct")
         market_signal = financial_data.get("market_signal", "neutral")
+        if fear_greed is None or vix is None or btc_change is None:
+            logger.debug("CORRELACION_FINANCIERA omitida: faltan datos de mercado (fear_greed/vix/btc_change_pct)")
+            return []
 
         extreme_fear = fear_greed < 20
         vix_spike = vix > 30

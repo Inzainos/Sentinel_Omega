@@ -140,6 +140,124 @@ def _launch_dashboard() -> subprocess.Popen:
     return proc
 
 
+def _start_health_server():
+    """Start a simple HTTP server for health checks (used by watchdog).
+
+    A2 (tuning P0-C, 2026-11-10): /health HONESTO. Antes devolvía 200 con
+    `"status": "healthy"` siempre (se sobrescribía el contenido del
+    heartbeat) y nadie lo leía. Ahora:
+
+    * 200 solo si hay heartbeat fresco (edad <= HEALTH_STALE_S, 600 s),
+      la fase no es `cycle_failed`/`cycle_timeout` y un ciclo en marcha no
+      lleva más de CYCLE_TIMEOUT_S (420 s) en `cycle_start`.
+    * 503 en caso contrario, con `status: "unhealthy"` y `reason`.
+    * `ThreadingHTTPServer` (antes `HTTPServer` de un solo hilo) y timeout
+      de cliente de 10 s; si el puerto no se puede bindear se avisa y se
+      sigue sin /health en vez de tumbar el arranque (A7).
+
+    Contrato para el watchdog/medic (pendiente de cablear, fuera de este
+    archivo): `GET http://127.0.0.1:8789/health` -> 200 sano / 503 no sano;
+    el JSON lleva `phase`, `cycle`, `heartbeat_age_s`,
+    `consecutive_failures` y `reason`.
+    """
+    from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
+    import json
+    import threading
+
+    class HealthHandler(BaseHTTPRequestHandler):
+        def setup(self):
+            super().setup()
+            try:
+                self.request.settimeout(10)
+            except OSError:
+                pass
+
+        def do_GET(self):
+            if self.path != "/health":
+                try:
+                    self.send_response(404)
+                    self.end_headers()
+                except OSError:
+                    pass
+                return
+            # Read the heartbeat file for current status
+            hb_path = Path(__file__).parent / "data" / "sentinel_omega_heartbeat.json"
+            try:
+                if hb_path.exists():
+                    hb_data = json.loads(hb_path.read_text())
+                else:
+                    hb_data = {"status": "unknown", "message": "No heartbeat file"}
+            except Exception:
+                hb_data = {"status": "error", "message": "Could not read heartbeat"}
+
+            now = time.time()
+            hb_ts = hb_data.get("ts")
+            phase = hb_data.get("phase")
+            age = (now - hb_ts) if isinstance(hb_ts, (int, float)) else None
+            reasons = []
+            if age is None:
+                reasons.append("sin heartbeat")
+            elif age > HEALTH_STALE_S:
+                reasons.append(f"heartbeat con {age:.0f}s (> {HEALTH_STALE_S}s)")
+            if phase in ("cycle_failed", "cycle_timeout"):
+                reasons.append(f"fase {phase}")
+            elif phase == "cycle_start" and age is not None and age > CYCLE_TIMEOUT_S:
+                reasons.append(f"ciclo en marcha {age:.0f}s (> {CYCLE_TIMEOUT_S}s)")
+            healthy = not reasons
+
+            payload = dict(hb_data)
+            payload["pid"] = os.getpid()
+            payload["uptime_s"] = time.time() - _START_TIME
+            payload["heartbeat_age_s"] = age
+            payload["status"] = "healthy" if healthy else "unhealthy"
+            if reasons:
+                payload["reason"] = "; ".join(reasons)
+            body = json.dumps(payload).encode()
+            try:
+                self.send_response(200 if healthy else 503)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+            except OSError:
+                pass
+
+        def log_message(self, format, *args):
+            # Suppress default log messages
+            pass
+
+    # Start server in background thread
+    try:
+        server = ThreadingHTTPServer(("127.0.0.1", 8789), HealthHandler)
+    except OSError as e:
+        logger.warning(
+            "Health server no pudo arrancar (:8789): %s — se sigue sin /health", e
+        )
+        return None
+    server.daemon_threads = True
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    logger.info("Health check server started on http://127.0.0.1:8789/health")
+    return server
+
+
+# Global start time for uptime calculation
+_START_TIME = time.time()
+
+# A1/A2 (tuning P0-C, 2026-11-10; auditoría §4.A, hallazgos A1/A2/A4/A5/A6).
+# Timeout real del ciclo, frescura del /health y política de fallos. Los
+# valores se pueden ajustar por entorno sin tocar código; los defaults son
+# los medidos en la auditoría (timeout 420 s, heartbeat 600 s, alerta a los
+# 3 fallos consecutivos, salida no-cero a los 5 para reinicio limpio por
+# systemd — `Restart=always` en `sentinel-omega.service`).
+CYCLE_TIMEOUT_S = int(os.environ.get("SENTINEL_CYCLE_TIMEOUT_S", "420"))
+HEALTH_STALE_S = int(os.environ.get("SENTINEL_HEALTH_STALE_S", "600"))
+MAX_CONSECUTIVE_FAILURES = 5
+ALERT_AFTER_FAILURES = 3
+FAILURE_BACKOFF_BASE_S = int(os.environ.get("SENTINEL_FAILURE_BACKOFF_BASE_S", "30"))
+FAILURE_BACKOFF_CAP_S = int(os.environ.get("SENTINEL_FAILURE_BACKOFF_CAP_S", "300"))
+
+
 def _estado_telegram(config) -> str:
     """Lo que de verdad va a pasar con Telegram, no lo que diga el yaml.
 
@@ -386,16 +504,138 @@ def run(args):
     logger.info(f"Cycle interval: {cycle_interval}s")
     logger.info("Sentinel Omega ONLINE.")
 
+    # Start health check server for watchdog monitoring
+    health_server = _start_health_server()
+
+    # A5 (P0-C): fallos de ciclo CONSECUTIVOS en la vida de este proceso.
+    # Se resetea con cada ciclo exitoso; a los 3 se alerta (log CRITICAL +
+    # campo en el heartbeat para que lo vea el watchdog/medic) y a los 5 se
+    # sale no-cero para reinicio limpio por systemd.
+    consecutive_failures = 0
+
     try:
         while not _shutdown_requested:
-            cycle_start = time.time()
+            # A6 (P0-C): reloj monotónico para medir el ciclo y el sueño —
+            # inmune a saltos de NTP/reloj de pared (el `time.time()` de
+            # antes alargaba o acortaba el intervalo si el reloj se ajustaba).
+            cycle_start = time.monotonic()
 
+            # ── Corte diario de Schumann (2026-10-26) ─────────────────
+            # UNA descarga del espectrograma de Tomsk por día, al empezar
+            # el ciclo, para que el pipeline lea el valor de HOY en este
+            # mismo ciclo. Mientras Tomsk falle se reintenta cada ciclo;
+            # el día sin corte se VE, no se inventa. Reemplaza las 288
+            # descargas/día del fetch por ciclo (212 fallos medidos en un
+            # solo log) — el valor era el mismo: Tomsk reescribe igual
+            # cada hora.
+            try:
+                from sentinel_omega.core import schumann_vivo
+                _conn_sd = getattr(repo, "_conn", None)
+                if _conn_sd is not None:
+                    _sd = schumann_vivo.corte_diario(_conn_sd)
+                    if _sd.get("estado") == "en_vivo":
+                        logger.info(
+                            "SCHUMANN corte diario %s: actividad %.2f%% "
+                            "(la medición del día — el fetch por ciclo "
+                            "se retiró)",
+                            _sd.get("fecha"), _sd.get("actividad") or 0.0,
+                        )
+                    elif _sd.get("estado") == "sin_senal":
+                        logger.warning(
+                            "SCHUMANN corte diario sin señal (Tomsk caído o "
+                            "imagen sin dato) — día marcado como fallido, "
+                            "no se reintentará hoy"
+                        )
+            except Exception as e:
+                logger.warning(
+                    "Corte diario de Schumann falló (non-blocking): %s", e,
+                )
+
+            cycle_ok = False
+            cycle_failed_exc = None
+            results = {}
             try:
                 logger.info(f"--- Starting cycle #{orch.get_status().cycle_count + 1} ---")
-                results = orch.run_cycle()
+
+                # Heartbeat at cycle START (for watchdog to detect stuck launcher)
+                try:
+                    import json
+                    hb_path = Path(db_path).parent / "sentinel_omega_heartbeat.json"
+                    hb_path.write_text(json.dumps({
+                        "ts": time.time(),
+                        "cycle": orch.get_status().cycle_count + 1,
+                        "pid": os.getpid(),
+                        "phase": "cycle_start"
+                    }))
+                except Exception as e:
+                    logger.debug("Heartbeat write failed (non-blocking): %s", e)
+
+                # A1 (P0-C): timeout REAL — el ciclo corre en un worker y el
+                # hilo principal hace join(CYCLE_TIMEOUT_S). El mecanismo
+                # anterior (threading.Event que solo detectaba a posteriori)
+                # NO interrumpía nada: un run_cycle() colgado dejaba el
+                # launcher atascado indefinidamente (133 "Cycle failed"
+                # medidos: 80×300 s + 53×420 s, verificación parte 2).
+                # 420 s porque las consultas multi-zona de Alfa-2 (20 s/zona
+                # × 3-5 zonas) pueden tardar 60-100 s solas. Al expirar se
+                # registra `cycle_timeout` en el heartbeat y se sale no-cero
+                # para que systemd reinicie limpio (Restart=always). El
+                # worker es daemon: el proceso muere aunque el ciclo siga
+                # colgado y sus fds/locks se liberan con él.
+                import threading
+                _cycle_result = {}
+                _cycle_error = []
+
+                def _run_cycle_worker():
+                    # Turno 2 (transacción por ciclo): los LOCF y la
+                    # persistencia operativa del worker commitean UNA vez
+                    # al salir de este bloque (no uno por insert).
+                    try:
+                        with SentinelRepository.defer_commit():
+                            _cycle_result["results"] = orch.run_cycle()
+                    except BaseException as exc:  # noqa: BLE001 — el worker no debe morir en silencio
+                        _cycle_error.append(exc)
+
+                _worker = threading.Thread(
+                    target=_run_cycle_worker, daemon=True, name="cycle-worker"
+                )
+                _worker.start()
+                _worker.join(timeout=CYCLE_TIMEOUT_S)
+                if _worker.is_alive():
+                    try:
+                        import json
+                        hb_path = Path(db_path).parent / "sentinel_omega_heartbeat.json"
+                        hb_path.write_text(json.dumps({
+                            "ts": time.time(),
+                            "cycle": orch.get_status().cycle_count,
+                            "pid": os.getpid(),
+                            "phase": "cycle_timeout",
+                            "timeout_s": CYCLE_TIMEOUT_S,
+                        }))
+                    except Exception:
+                        pass
+                    logger.error(
+                        "CYCLE TIMEOUT: run_cycle() superó %ss — salida "
+                        "no-cero para reinicio limpio por systemd",
+                        CYCLE_TIMEOUT_S,
+                    )
+                    for _h in logger.handlers:
+                        try:
+                            _h.flush()
+                        except Exception:
+                            pass
+                    sys.exit(1)
+                if _cycle_error:
+                    raise _cycle_error[0]
+                results = _cycle_result.get("results", {})
+
                 status = orch.get_status()
 
-                _log_cycle_summary(status, results, repo, config, runner=orch._runner)
+                # Turno 2 (transacción por ciclo): _log_cycle_summary
+                # commitea UNA vez al salir de este bloque (hilo
+                # principal; el worker ya commiteó la suya).
+                with repo.defer_commit():
+                    _log_cycle_summary(status, results, repo, config, runner=orch._runner)
 
                 # Plantillas cascada del Concilio (2026-10-20): P2H cada 3 h,
                 # P6H cada 6, P12H cada 12, P24H a medianoche — la marca en
@@ -420,8 +660,27 @@ def run(args):
                 except Exception as _exc:
                     logger.warning("Plantillas Concilio (no bloqueante): %s", _exc)
 
+                cycle_ok = True
+            except SystemExit:
+                raise
             except Exception as e:
                 logger.error(f"Cycle failed: {e}", exc_info=True)
+                cycle_failed_exc = e
+
+            # A5 (P0-C): contador de fallos. Se actualiza AQUÍ (antes del
+            # heartbeat de fin de ciclo) para que el heartbeat lleve el
+            # conteo final del ciclo que acaba de terminar.
+            if cycle_ok:
+                consecutive_failures = 0
+            else:
+                consecutive_failures += 1
+                if consecutive_failures == ALERT_AFTER_FAILURES:
+                    logger.critical(
+                        "ALERTA: %s fallos de ciclo consecutivos — el "
+                        "watchdog/medic debe verlo en /health (fase "
+                        "cycle_failed, consecutive_failures=%s)",
+                        consecutive_failures, consecutive_failures,
+                    )
 
             # El disparador del WAL. Mirar el tamaño de un archivo cuesta
             # microsegundos, así que puede correr en cada ciclo; el volcado solo
@@ -434,12 +693,69 @@ def run(args):
             except Exception as e:  # noqa: BLE001 — nunca tumbar el ciclo por esto
                 logger.warning("Revisión del WAL falló (non-blocking): %s", e)
 
+            # Heartbeat para watchdog: marca el fin de ciclo HONESTO (A2).
+            # Antes era incondicional y escribía `cycle_end` incluso con el
+            # ciclo fallido, así que /health decía "healthy" sobre un ciclo
+            # roto. Ahora: `cycle_end` solo si el ciclo terminó bien;
+            # `cycle_failed` con el error y el conteo de fallos si no.
+            try:
+                import json
+                hb_path = Path(db_path).parent / "sentinel_omega_heartbeat.json"
+                if cycle_ok:
+                    hb_path.write_text(json.dumps({
+                        "ts": time.time(),
+                        "cycle": orch.get_status().cycle_count,
+                        "pid": os.getpid(),
+                        "phase": "cycle_end"
+                    }))
+                else:
+                    hb_data_failed = {
+                        "ts": time.time(),
+                        "cycle": orch.get_status().cycle_count,
+                        "pid": os.getpid(),
+                        "phase": "cycle_failed",
+                        "error": str(cycle_failed_exc)[:500] if cycle_failed_exc else "unknown",
+                        "consecutive_failures": consecutive_failures,
+                    }
+                    if consecutive_failures >= ALERT_AFTER_FAILURES:
+                        hb_data_failed["alert"] = (
+                            f"{consecutive_failures} fallos de ciclo consecutivos"
+                        )
+                    hb_path.write_text(json.dumps(hb_data_failed))
+            except Exception as e:
+                logger.debug("Heartbeat write failed (non-blocking): %s", e)
+
+            # A5 (P0-C): salida no-cero tras N=5 fallos consecutivos para
+            # reinicio limpio por systemd. Va DESPUÉS del heartbeat para
+            # que el `cycle_failed` con el conteo final quede registrado.
+            if consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
+                logger.error(
+                    "Demasiados fallos de ciclo consecutivos (%s) — salida "
+                    "no-cero para reinicio limpio por systemd",
+                    consecutive_failures,
+                )
+                for _h in logger.handlers:
+                    try:
+                        _h.flush()
+                    except Exception:
+                        pass
+                sys.exit(2)
+
             if args.once:
                 logger.info("--once flag: exiting after single cycle.")
                 break
 
-            elapsed = time.time() - cycle_start
-            sleep_time = max(0, cycle_interval - elapsed)
+            elapsed = time.monotonic() - cycle_start
+            if cycle_ok:
+                sleep_time = max(0, cycle_interval - elapsed)
+            else:
+                # Backoff tras fallo (A5): 30 s × nº de fallos, tope 300 s.
+                # No se usa el intervalo normal: tras un fallo el sistema
+                # respira antes de reintentar en vez de pegarse al ciclo.
+                sleep_time = min(
+                    FAILURE_BACKOFF_BASE_S * consecutive_failures,
+                    FAILURE_BACKOFF_CAP_S,
+                )
             if sleep_time > 0 and not _shutdown_requested:
                 logger.info(f"Next cycle in {sleep_time:.0f}s...")
                 _interruptible_sleep(sleep_time)
@@ -453,18 +769,36 @@ def run(args):
             logger.info(f"Terminating dashboard (PID {dashboard_proc.pid})...")
             dashboard_proc.terminate()
             dashboard_proc.wait(timeout=10)
+        if 'health_server' in locals() and health_server is not None:
+            logger.info("Shutting down health check server...")
+            health_server.shutdown()
         _clear_pid()
         logger.info("Sentinel Omega OFFLINE.")
 
 
 def _interruptible_sleep(seconds: float):
-    end = time.time() + seconds
-    while time.time() < end and not _shutdown_requested:
-        time.sleep(min(1.0, end - time.time()))
+    # A6 (P0-C): reloj monotónico — el sueño no se alarga ni se acorta si
+    # el reloj de pared se ajusta (NTP) durante el ciclo.
+    end = time.monotonic() + seconds
+    while time.monotonic() < end and not _shutdown_requested:
+        time.sleep(min(1.0, end - time.monotonic()))
 
 
 def _log_cycle_summary(status, results, repo, config, runner=None):
-    risk = status.last_precursor_risk
+    # A4 (P0-C): persistir SOLO si el ciclo actual produjo `risk`.
+    # `run_cycle()` captura sus propias excepciones y devuelve `{}` cuando
+    # el runner falla, así que `last_precursor_risk` quedaba con el valor
+    # del ciclo anterior y aquí se re-persistía un fantasma rancio
+    # (TBL_PRECURSORES_COSMICOS con el fantasma del ciclo anterior). El
+    # sello `last_risk_cycle` lo pone el orchestrator al asignar el risk.
+    # Si el status no trae el sello (mocks/tests viejos), se asume fresco
+    # para no cambiar su conducta.
+    _risk_cycle = getattr(status, "last_risk_cycle", None)
+    _cycle_now = getattr(status, "cycle_count", None)
+    if _risk_cycle is not None and _cycle_now is not None and _risk_cycle != _cycle_now:
+        risk = None
+    else:
+        risk = status.last_precursor_risk
     if risk:
         logger.info(
             f"Fantasma: {risk.fantasma:.2f} ({risk.risk_level}) | "
@@ -1096,35 +1430,40 @@ def _auditar_ciclo(geo, repo, runner) -> None:
         memoria = FirmaMemoria(conn)
         juez = Juez(conn)
 
-        # Serie viva de Schumann: la lectura en tiempo real de esta corrida
-        # (WPC de Tomsk) se acumula con su bloque horario. Con el tiempo esta
-        # serie alimenta el dominio SCHUMANN de los cruces (no hay backcast).
-        try:
-            from sentinel_omega.core import schumann_vivo
-            beta1_cache = getattr(runner.pipeline, "_cache", {}).get("beta1") or {}
-            sch = schumann_vivo.registrar(
-                conn,
-                beta1_cache.get("schumann_frequency"),
-                beta1_cache.get("schumann_activity"),
-            )
-            if sch["estado"] == "arrastrado":
-                logger.info(
-                    "Schumann API caída: arrastro el último valor real (%s, "
-                    "%.1f h) -> %s / %s, en_vivo=0",
-                    sch["ultimo_vivo_ts"], sch["atraso_horas"],
-                    sch["schumann_hz"], sch["schumann_activity"],
-                )
-            elif sch["estado"] == "desconocido":
-                logger.warning(
-                    "Schumann DESCONOCIDO: la API falla y no hay ninguna "
-                    "lectura real guardada. No se inventa un valor."
-                )
-        except Exception as e:
-            logger.warning(f"Persistencia Schumann viva falló (non-blocking): {e}")
+        # Serie viva de Schumann: RETIRADA del ciclo (2026-10-26). El corte
+        # diario al empezar el ciclo escribe la lectura del día (1 fila/día
+        # vía registrar, mismo idioma de siempre) — escribir aquí de nuevo
+        # el valor del día 288 veces no añadía información (Tomsk reescribe
+        # igual cada hora, medido) y sí llenaba la tabla de repeticiones que
+        # el CONGELADO de salud detectaba como fuente muerta.
+        # El pipeline ya no hace fetch: lee tbl_schumann_diario.
 
         matches = []
         features = _build_live_features(runner, conn)
         if features:
+            # ── Evidencia cimática para el Padre (2026-10-25) ──────────
+            # «Integrarle al padre el filtro cimático»: qué vísperas
+            # históricas empareja la figura viva (idéntica o similar).
+            # EVIDENCIA con etiqueta honesta, no compuerta — la
+            # calibración contra calma está dentro del dict (la calma
+            # empareja igual o más; medir_cimatica_evidencia.py).
+            try:
+                from sentinel_omega.core.firmas.biblioteca_cimatica import (
+                    cimatica_evidencia,
+                )
+                _ev = cimatica_evidencia(conn, features)
+                if getattr(geo, "metadata", None) is not None:
+                    geo.metadata["cimatica_evidencia"] = _ev
+                try:
+                    runner.padre.registrar_cimatica_evidencia(_ev)
+                except AttributeError:
+                    pass  # runner sin padre (doble de tests): nada que hacer
+                logger.info(f"PADRE CIMÁTICA: {_ev.get('resumen', '—')}")
+            except Exception as e:
+                logger.warning(
+                    "Evidencia cimática falló (non-blocking): %s", e,
+                )
+
             matches = memoria.match_estado_actual(features)
             _registrar_racha_viva(conn, matches)
             for m in matches[:5]:

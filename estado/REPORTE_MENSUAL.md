@@ -1,41 +1,65 @@
 # 🗓️ Reporte mensual — Sentinel Omega
-*Generado 2026-10-01 00:04 hora MX — ventana 31 días*
+*Generado 2026-11-01 00:00 hora MX — ventana 31 días*
 
-> **Lectura rápida:** el sistema estuvo **inquieto** · Fantasma medio **11.6** (MODERATE · atención) · Muro con **70 breach(es)** · asertividad viva **86%**.
+> **Lectura rápida:** el sistema estuvo **inquieto** · Fantasma medio **10.8** (MODERATE · atención) · Muro con **1986 breach(es)** · asertividad viva **66%** con ganancia **0.78×** (no supera al azar).
 
 ## Resumen
-- Ciclos corridos: **5900**
-- Fantasma medio del periodo: **11.6**
-- Fantasma máximo: **62.2**
-- Breaches del Muro: **70**
-- Asertividad viva del periodo: **86%** (n=31360 resueltas)
+- Ciclos corridos: **6671**
+- Fantasma medio del periodo: **10.8**
+- Fantasma máximo: **34.7**
+- Breaches del Muro: **1986**
+- Asertividad viva del periodo: **66%** (n=2480 resueltas)
+
+## 🌤️ GOES X-ray — Sin fulguración significativa
+
+> Flux máx 24 h: **4.8e-07 W/m²** a las 2026-11-01 05:00 (< clase C).
+
+## 🛰️ Alfa-2 · Anomalías térmicas por precedente de zona
+
+| Zona | Anomalías | Cobertura | Pases limpios / totales |
+|---|---:|---:|---:|
+| nodo024 | **2** | 0.67 | 0 / 24 |
+| nodo025 | **2** | 0.90 | 35 / 67 |
+| nodo003 | **2** | 0.68 | 0 / 31 |
+| nodo027 | **1** | 0.89 | 33 / 87 |
+| nodo028 | **1** | 0.67 | 0 / 20 |
+| nodo005 | **1** | 0.84 | 12 / 33 |
+| nodo033 | **4** | 0.94 | 42 / 76 |
+| nodo034 | **4** | 0.91 | 37 / 95 |
+| nodo007 | **4** | 0.68 | 0 / 38 |
+| nodo040 | **4** | 0.84 | 16 / 43 |
+| nodo041 | **4** | 0.89 | 15 / 38 |
+| nodo011 | **4** | 0.68 | 0 / 36 |
+| nodo042 | **7** | 0.81 | 18 / 70 |
+| nodo043 | **7** | 0.85 | 26 / 68 |
+| nodo012 | **7** | 0.68 | 0 / 29 |
 
 ## Cimática
-- Patrones `general`: 131245 (frecuencia máx 98)
-- Patrones `nodo`: 165811 (frecuencia máx 169)
+- Patrones `general`: 104574 (frecuencia máx 76)
+- Patrones `nodo`: 110017 (frecuencia máx 104)
 
 | Patrón | Ámbito | Evento asociado | Frecuencia |
 |---|---|---|---:|
-| 2022633 | nodo 96 | SISMO_M5 | 169 |
-| 2022631 | general | SISMO_M4 | 98 |
-| 1804048 | general | SISMO_M4 | 94 |
-| 1804049 | nodo 109 | SISMO_M4 | 94 |
-| 2022632 | nodo 97 | SISMO_M4 | 90 |
-| 2022629 | nodo 96 | SISMO_M5 | 76 |
-| 2022693 | general | SISMO_M4 | 76 |
-| 2022694 | nodo 28 | SISMO_M4 | 76 |
-| 2022642 | nodo 96 | SISMO_M5 | 74 |
-| 2022696 | nodo 110 | SISMO_M5 | 74 |
+| 5169443 | nodo 67 | SISMO_M5 | 104 |
+| 5169550 | general | SISMO_M4 | 76 |
+| 5169553 | nodo 26 | SISMO_M5 | 76 |
+| 5169521 | nodo 67 | SISMO_M5 | 74 |
+| 5169323 | nodo 67 | SISMO_M5 | 62 |
+| 5169551 | nodo 67 | SISMO_M4 | 56 |
+| 5169552 | nodo 60 | SISMO_M5 | 56 |
+| 5169538 | general | SISMO_M5 | 55 |
+| 5169539 | nodo 26 | SISMO_M5 | 55 |
+| 5169540 | nodo 67 | SISMO_M4 | 55 |
 
 ## ✅ Aciertos — Últimos 31 días
 
 | Métrica | Valor |
 |---------|-------|
-| **Aciertos** | 27120 |
-| **Fallos** | 1168 |
-| **Falsos positivos** | 3072 |
-| **Tasa de acierto** | 86.4% `▓▓▓▓▓▓▓▓▓▓░░` |
-| **Total predicciones** | 31392 |
+| **Aciertos** | 1495 |
+| **Fallos** | 165 |
+| **Falsos positivos** | 652 |
+| **Tasa de acierto** | 64.2% `▓▓▓▓▓▓▓▓░░░░` |
+| **Total predicciones** | 2328 |
 
 ![Distribución de veredictos](graficas/aciertos_31d_pastel.png)
 
@@ -43,15 +67,14 @@
 
 | Bot | Aciertos | Tasa | Confianza | Anticipación |
 |-----|----------|------|-----------|---------------|
-| alfa2 | 3336/3481 | 96% `▓▓▓▓▓▓▓▓` | 0.11 | 0.1d |
-| beta2 | 3282/3481 | 94% `▓▓▓▓▓▓▓▓` | 0.21 | 0.1d |
-| loki | 3272/3481 | 94% `▓▓▓▓▓▓▓▓` | 0.30 | 0.1d |
-| omega | 3131/3481 | 90% `▓▓▓▓▓▓▓░` | 0.40 | 0.1d |
-| jupiter | 3047/3481 | 88% `▓▓▓▓▓▓▓░` | 0.26 | 0.1d |
-| padre | 2899/3512 | 83% `▓▓▓▓▓▓▓░` | 0.17 | 0.1d |
-| delta | 2879/3481 | 83% `▓▓▓▓▓▓▓░` | 0.39 | 0.1d |
-| beta1 | 2801/3481 | 80% `▓▓▓▓▓▓░░` | 0.40 | 0.1d |
-| alfa1 | 2473/3481 | 71% `▓▓▓▓▓▓░░` | 0.42 | 0.1d |
+| beta1 | 239/289 | 83% `▓▓▓▓▓▓▓░` | 0.33 | 0.1d |
+| delta | 237/289 | 82% `▓▓▓▓▓▓▓░` | 0.34 | 0.1d |
+| beta2 | 235/289 | 81% `▓▓▓▓▓▓▓░` | 0.24 | 0.1d |
+| omega | 228/289 | 79% `▓▓▓▓▓▓░░` | 0.43 | 0.1d |
+| loki | 224/289 | 78% `▓▓▓▓▓▓░░` | 0.27 | 0.1d |
+| padre | 191/289 | 66% `▓▓▓▓▓░░░` | 0.24 | 0.1d |
+| alfa1 | 74/289 | 26% `▓▓░░░░░░` | 0.63 | 0.1d |
+| alfa2 | 67/289 | 23% `▓▓░░░░░░` | 0.70 | 0.1d |
 
 ![Desempeño por bot](graficas/aciertos_31d_barras.png)
 
@@ -69,8 +92,11 @@
   oceánica, solar/geomagnética y financiera). Hay *breach* cuando **3 o más** se
   activan a la vez.
 - **Asertividad viva** — de las predicciones ya verificadas contra la realidad (USGS),
-  qué porcentaje resultó **ACIERTO**. Verdad por fila, ventana de 72 h; el Juez
-  audita aparte (nunca predice).
+  qué porcentaje resultó **ACIERTO**. El conteo impreso conserva la `ventana_h`
+  almacenada en cada fila; no es todavía un filtro de **M>=6.0
+  dentro de 24 h** ni una relabelización del histórico.
+  Ese es el blanco objetivo para reportes nuevos. El umbral del muro no cambia.
+  El Juez audita aparte (nunca predice).
 - **Cimática** — patrones de telemetría que el sistema ve repetirse; si un patrón
   antecede a un evento real se etiqueta con su clase (SISMO_M4…M7, ERUPCION_VEI…).
   La frecuencia es cuántas veces se ha visto ese patrón.

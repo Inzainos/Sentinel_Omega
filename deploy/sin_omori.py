@@ -1,6 +1,6 @@
 import sys, json, statistics as st
-sys.path.insert(0,"/home/deamon/workspaces")
-sys.path.insert(0, "/home/deamon/workspaces/deploy")
+sys.path.insert(0,"/home/deamon/Sentinel_Omega")
+sys.path.insert(0, "/home/deamon/Sentinel_Omega/deploy")
 from disenar_rasgos_padre import muestras, DB, N_FIRMAS, SIMILARITY_ALERT
 from sentinel_omega.core.firmas.signature_engine import similitud
 from sentinel_omega.infrastructure.pipeline.mantenimiento import conexion_de_lote

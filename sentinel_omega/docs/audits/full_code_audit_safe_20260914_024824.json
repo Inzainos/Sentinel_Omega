@@ -1,11 +1,11 @@
 [
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "__init__.py",
     "ast_ok": true,
     "ast_err": "",
     "compile_ok": false,
-    "compile_err": "[Errno 13] Permission denied: '/home/deamon/workspaces/sentinel_omega/__pycache__/__init__.cpython-311.pyc.128714784436912'",
+    "compile_err": "[Errno 13] Permission denied: '/home/deamon/Sentinel_Omega/sentinel_omega/__pycache__/__init__.cpython-311.pyc.128714784436912'",
     "has_main": false,
     "uses_argparse": false,
     "cli_flags": [],
@@ -14,7 +14,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "config/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -28,7 +28,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "config/onnx_config.py",
     "ast_ok": true,
     "ast_err": "",
@@ -42,7 +42,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "config/sentinel_config.py",
     "ast_ok": true,
     "ast_err": "",
@@ -56,7 +56,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "core/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -70,7 +70,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "core/delta_enriched/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -84,7 +84,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "core/delta_enriched/composite.py",
     "ast_ok": true,
     "ast_err": "",
@@ -101,7 +101,7 @@
     "help_note": "Traceback (most recent call last):"
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "core/delta_enriched/cross.py",
     "ast_ok": true,
     "ast_err": "",
@@ -115,7 +115,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "core/delta_enriched/delta_engine.py",
     "ast_ok": true,
     "ast_err": "",
@@ -129,7 +129,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "core/delta_enriched/fetchers.py",
     "ast_ok": true,
     "ast_err": "",
@@ -143,7 +143,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "core/delta_enriched/historico.py",
     "ast_ok": true,
     "ast_err": "",
@@ -159,7 +159,7 @@
     "help_note": "usage: historico.py [-h] --db-path DB_PATH"
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "core/delta_enriched/market_mapping.py",
     "ast_ok": true,
     "ast_err": "",
@@ -173,7 +173,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "core/firmas/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -187,7 +187,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "core/firmas/cimatica.py",
     "ast_ok": true,
     "ast_err": "",
@@ -201,7 +201,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "core/firmas/signature_engine.py",
     "ast_ok": true,
     "ast_err": "",
@@ -215,7 +215,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "core/juez/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -229,7 +229,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "core/juez/juez.py",
     "ast_ok": true,
     "ast_err": "",
@@ -243,7 +243,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "core/juez/pesos.py",
     "ast_ok": true,
     "ast_err": "",
@@ -257,7 +257,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "core/onnx_engine.py",
     "ast_ok": true,
     "ast_err": "",
@@ -271,7 +271,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "core/onnx_mixin.py",
     "ast_ok": true,
     "ast_err": "",
@@ -285,7 +285,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "core/precursor/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -299,7 +299,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "core/precursor/assertivity.py",
     "ast_ok": true,
     "ast_err": "",
@@ -313,7 +313,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "core/precursor/baseline.py",
     "ast_ok": true,
     "ast_err": "",
@@ -327,7 +327,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "core/precursor/jupiter.py",
     "ast_ok": true,
     "ast_err": "",
@@ -341,7 +341,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "core/precursor/muro_cinco_eventos.py",
     "ast_ok": true,
     "ast_err": "",
@@ -355,7 +355,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "core/precursor/muro_lags.py",
     "ast_ok": true,
     "ast_err": "",
@@ -369,7 +369,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "core/precursor/precursor_types.py",
     "ast_ok": true,
     "ast_err": "",
@@ -383,7 +383,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "core/precursor/risk_calculator.py",
     "ast_ok": true,
     "ast_err": "",
@@ -397,7 +397,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "core/precursor/scanner.py",
     "ast_ok": true,
     "ast_err": "",
@@ -411,7 +411,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "core/shared/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -425,7 +425,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "core/shared/agent_base.py",
     "ast_ok": true,
     "ast_err": "",
@@ -439,7 +439,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "core/shared/data_pipeline.py",
     "ast_ok": true,
     "ast_err": "",
@@ -453,7 +453,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "core/shared/geometria_uvg.py",
     "ast_ok": true,
     "ast_err": "",
@@ -467,7 +467,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "core/snt_engine/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -481,7 +481,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "core/snt_engine/asi.py",
     "ast_ok": true,
     "ast_err": "",
@@ -495,7 +495,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "core/snt_engine/corpus.py",
     "ast_ok": true,
     "ast_err": "",
@@ -509,7 +509,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "core/snt_engine/friction.py",
     "ast_ok": true,
     "ast_err": "",
@@ -523,7 +523,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "core/snt_engine/nbody.py",
     "ast_ok": true,
     "ast_err": "",
@@ -537,7 +537,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "core/snt_engine/satellization.py",
     "ast_ok": true,
     "ast_err": "",
@@ -551,7 +551,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -565,7 +565,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/api/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -579,7 +579,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/api/_http.py",
     "ast_ok": true,
     "ast_err": "",
@@ -593,7 +593,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/api/bolsa.py",
     "ast_ok": true,
     "ast_err": "",
@@ -607,7 +607,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/api/circuit_breaker.py",
     "ast_ok": true,
     "ast_err": "",
@@ -621,7 +621,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/api/correo.py",
     "ast_ok": true,
     "ast_err": "",
@@ -635,7 +635,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/api/crypto.py",
     "ast_ok": true,
     "ast_err": "",
@@ -649,7 +649,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/api/esa_sentinel.py",
     "ast_ok": true,
     "ast_err": "",
@@ -663,7 +663,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/api/geophysical.py",
     "ast_ok": true,
     "ast_err": "",
@@ -677,7 +677,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/api/gfz_kp.py",
     "ast_ok": true,
     "ast_err": "",
@@ -691,7 +691,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/api/google_trends.py",
     "ast_ok": true,
     "ast_err": "",
@@ -705,7 +705,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/api/nasa_neo.py",
     "ast_ok": true,
     "ast_err": "",
@@ -719,7 +719,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/api/noaa.py",
     "ast_ok": true,
     "ast_err": "",
@@ -733,7 +733,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/api/noaa_hazards.py",
     "ast_ok": true,
     "ast_err": "",
@@ -747,7 +747,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/api/openweathermap.py",
     "ast_ok": true,
     "ast_err": "",
@@ -761,7 +761,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/api/schumann.py",
     "ast_ok": true,
     "ast_err": "",
@@ -775,7 +775,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/api/telegram.py",
     "ast_ok": true,
     "ast_err": "",
@@ -789,7 +789,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/api/usgs.py",
     "ast_ok": true,
     "ast_err": "",
@@ -803,7 +803,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/dashboard/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -817,7 +817,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/dashboard/agent_tab.py",
     "ast_ok": true,
     "ast_err": "",
@@ -831,7 +831,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/dashboard/api.py",
     "ast_ok": true,
     "ast_err": "",
@@ -845,7 +845,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/dashboard/app.py",
     "ast_ok": true,
     "ast_err": "",
@@ -859,7 +859,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/dashboard/ask_faq.py",
     "ast_ok": true,
     "ast_err": "",
@@ -873,7 +873,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/database/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -887,7 +887,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/database/locf_store.py",
     "ast_ok": true,
     "ast_err": "",
@@ -901,7 +901,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/database/migrate_v11.py",
     "ast_ok": true,
     "ast_err": "",
@@ -915,7 +915,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/database/repository.py",
     "ast_ok": true,
     "ast_err": "",
@@ -929,7 +929,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/database/schema.py",
     "ast_ok": true,
     "ast_err": "",
@@ -943,7 +943,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/database/seed_nodos.py",
     "ast_ok": true,
     "ast_err": "",
@@ -957,7 +957,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/health/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -971,7 +971,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/health/checks.py",
     "ast_ok": true,
     "ast_err": "",
@@ -985,7 +985,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/logging/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -999,7 +999,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/logging/formatter.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1013,7 +1013,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/messaging/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1027,7 +1027,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/messaging/agent_bridge.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1041,7 +1041,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/messaging/alert_enrichment.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1055,7 +1055,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/messaging/alert_service.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1069,7 +1069,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/messaging/charts.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1083,7 +1083,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/messaging/consenso_vigilante.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1097,7 +1097,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/pipeline/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1111,7 +1111,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/pipeline/backcast.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1125,7 +1125,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/pipeline/clima_gapfill_2026.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1142,7 +1142,7 @@
     "help_note": "usage: clima_gapfill_2026.py [-h] --db DB [--dry-run]"
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/pipeline/data_pipeline.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1156,7 +1156,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/pipeline/data_pipeline_locf_patch.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1170,7 +1170,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/pipeline/entrenamiento.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1184,7 +1184,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/pipeline/entrenar_paralelo.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1198,7 +1198,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/pipeline/juez_cycle_register.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1212,7 +1212,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/pipeline/layer_runners.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1226,7 +1226,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/pipeline/legacy_loader.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1240,7 +1240,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/pipeline/mantenimiento.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1254,7 +1254,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/pipeline/reporte_engine.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1268,7 +1268,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/pipeline/reporte_sentinel.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1282,7 +1282,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/pipeline/scheduler_reportes.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1296,7 +1296,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/pipeline/sismos_refetch_recent.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1314,7 +1314,7 @@
     "help_note": "Traceback (most recent call last):"
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/pipeline/topologia_cascada.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1333,7 +1333,7 @@
     "help_note": "Traceback (most recent call last):"
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/pipeline/verificacion.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1347,7 +1347,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/telegram/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1361,7 +1361,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/telegram/bot.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1375,7 +1375,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/watchdog/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1389,7 +1389,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "infrastructure/watchdog/network_watchdog.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1403,12 +1403,12 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "launcher.py",
     "ast_ok": true,
     "ast_err": "",
     "compile_ok": false,
-    "compile_err": "[Errno 13] Permission denied: '/home/deamon/workspaces/sentinel_omega/__pycache__/launcher.cpython-311.pyc.128714790707120'",
+    "compile_err": "[Errno 13] Permission denied: '/home/deamon/Sentinel_Omega/sentinel_omega/__pycache__/launcher.cpython-311.pyc.128714790707120'",
     "has_main": true,
     "uses_argparse": true,
     "cli_flags": [
@@ -1426,12 +1426,12 @@
     "help_note": "2026-09-14 02:48:23,241 [LAUNCHER] INFO Log rotation enabled (maxBytes=52428800, backupCount=5)"
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "launcher_fixed.py",
     "ast_ok": true,
     "ast_err": "",
     "compile_ok": false,
-    "compile_err": "[Errno 13] Permission denied: '/home/deamon/workspaces/sentinel_omega/__pycache__/launcher_fixed.cpython-311.pyc.128714786553216'",
+    "compile_err": "[Errno 13] Permission denied: '/home/deamon/Sentinel_Omega/sentinel_omega/__pycache__/launcher_fixed.cpython-311.pyc.128714786553216'",
     "has_main": true,
     "uses_argparse": true,
     "cli_flags": [
@@ -1449,7 +1449,7 @@
     "help_note": "usage: launcher_fixed.py [-h] [--once] [--dashboard] [--dry-run] [--backcast]"
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "layers/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1463,7 +1463,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "layers/geodynamic/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1477,7 +1477,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "layers/geodynamic/alfa1/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1491,7 +1491,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "layers/geodynamic/alfa1/agent.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1505,7 +1505,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "layers/geodynamic/alfa2/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1519,7 +1519,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "layers/geodynamic/alfa2/agent.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1533,7 +1533,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "layers/geodynamic/beta1/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1547,7 +1547,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "layers/geodynamic/beta1/agent.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1561,7 +1561,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "layers/geodynamic/beta2/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1575,7 +1575,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "layers/geodynamic/beta2/agent.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1589,7 +1589,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "layers/geodynamic/delta/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1603,7 +1603,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "layers/geodynamic/delta/agent.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1617,7 +1617,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "layers/geodynamic/jupiter/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1631,7 +1631,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "layers/geodynamic/jupiter/agent.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1645,7 +1645,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "layers/geodynamic/loki/agent.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1659,7 +1659,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "layers/geodynamic/omega/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1673,7 +1673,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "layers/geodynamic/omega/agent.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1687,7 +1687,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "layers/geodynamic/padre/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1701,7 +1701,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "layers/geodynamic/padre/agent.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1715,7 +1715,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "layers/lottery_standalone/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1729,7 +1729,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "models/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1743,7 +1743,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "models/train_onnx_bootstrap.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1757,7 +1757,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "models/train_onnx_from_db.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1775,12 +1775,12 @@
     "help_note": "Traceback (most recent call last):"
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "orchestrator.py",
     "ast_ok": true,
     "ast_err": "",
     "compile_ok": false,
-    "compile_err": "[Errno 13] Permission denied: '/home/deamon/workspaces/sentinel_omega/__pycache__/orchestrator.cpython-311.pyc.128714786212528'",
+    "compile_err": "[Errno 13] Permission denied: '/home/deamon/Sentinel_Omega/sentinel_omega/__pycache__/orchestrator.cpython-311.pyc.128714786212528'",
     "has_main": false,
     "uses_argparse": false,
     "cli_flags": [],
@@ -1789,12 +1789,12 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "reboot.py",
     "ast_ok": true,
     "ast_err": "",
     "compile_ok": false,
-    "compile_err": "[Errno 13] Permission denied: '/home/deamon/workspaces/sentinel_omega/__pycache__/reboot.cpython-311.pyc.128714786222512'",
+    "compile_err": "[Errno 13] Permission denied: '/home/deamon/Sentinel_Omega/sentinel_omega/__pycache__/reboot.cpython-311.pyc.128714786222512'",
     "has_main": true,
     "uses_argparse": true,
     "cli_flags": [
@@ -1807,7 +1807,7 @@
     "help_note": "usage: reboot.py [-h] [--force] [--dashboard] [--dry-run]"
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1821,7 +1821,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/config/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1835,7 +1835,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/config/onnx_config.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1849,7 +1849,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/config/sentinel_config.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1863,7 +1863,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/core/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1877,7 +1877,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/core/delta_enriched/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1891,7 +1891,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/core/delta_enriched/composite.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1908,7 +1908,7 @@
     "help_note": "Traceback (most recent call last):"
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/core/delta_enriched/cross.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1922,7 +1922,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/core/delta_enriched/delta_engine.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1936,7 +1936,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/core/delta_enriched/fetchers.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1950,7 +1950,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/core/delta_enriched/historico.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1966,7 +1966,7 @@
     "help_note": "usage: historico.py [-h] --db-path DB_PATH"
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/core/delta_enriched/market_mapping.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1980,7 +1980,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/core/firmas/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -1994,7 +1994,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/core/firmas/cimatica.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2008,7 +2008,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/core/firmas/signature_engine.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2022,7 +2022,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/core/juez/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2036,7 +2036,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/core/juez/juez.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2050,7 +2050,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/core/juez/pesos.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2064,7 +2064,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/core/onnx_engine.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2078,7 +2078,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/core/onnx_mixin.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2092,7 +2092,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/core/precursor/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2106,7 +2106,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/core/precursor/assertivity.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2120,7 +2120,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/core/precursor/baseline.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2134,7 +2134,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/core/precursor/jupiter.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2148,7 +2148,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/core/precursor/muro_cinco_eventos.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2162,7 +2162,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/core/precursor/muro_lags.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2176,7 +2176,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/core/precursor/precursor_types.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2190,7 +2190,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/core/precursor/risk_calculator.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2204,7 +2204,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/core/precursor/scanner.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2218,7 +2218,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/core/shared/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2232,7 +2232,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/core/shared/agent_base.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2246,7 +2246,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/core/shared/data_pipeline.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2260,7 +2260,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/core/shared/geometria_uvg.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2274,7 +2274,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/core/snt_engine/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2288,7 +2288,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/core/snt_engine/asi.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2302,7 +2302,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/core/snt_engine/corpus.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2316,7 +2316,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/core/snt_engine/friction.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2330,7 +2330,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/core/snt_engine/nbody.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2344,7 +2344,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/core/snt_engine/satellization.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2358,7 +2358,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2372,7 +2372,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/api/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2386,7 +2386,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/api/_http.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2400,7 +2400,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/api/bolsa.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2414,7 +2414,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/api/circuit_breaker.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2428,7 +2428,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/api/correo.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2442,7 +2442,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/api/crypto.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2456,7 +2456,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/api/esa_sentinel.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2470,7 +2470,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/api/geophysical.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2484,7 +2484,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/api/gfz_kp.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2498,7 +2498,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/api/google_trends.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2512,7 +2512,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/api/nasa_neo.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2526,7 +2526,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/api/noaa.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2540,7 +2540,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/api/noaa_hazards.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2554,7 +2554,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/api/openweathermap.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2568,7 +2568,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/api/schumann.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2582,7 +2582,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/api/telegram.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2596,7 +2596,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/api/usgs.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2610,7 +2610,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/dashboard/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2624,7 +2624,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/dashboard/agent_tab.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2638,7 +2638,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/dashboard/api.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2652,7 +2652,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/dashboard/app.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2666,7 +2666,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/dashboard/ask_faq.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2680,7 +2680,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/database/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2694,7 +2694,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/database/locf_store.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2708,7 +2708,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/database/migrate_v11.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2722,7 +2722,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/database/repository.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2736,7 +2736,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/database/schema.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2750,7 +2750,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/database/seed_nodos.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2764,7 +2764,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/health/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2778,7 +2778,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/health/checks.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2792,7 +2792,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/logging/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2806,7 +2806,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/logging/formatter.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2820,7 +2820,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/messaging/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2834,7 +2834,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/messaging/agent_bridge.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2848,7 +2848,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/messaging/alert_enrichment.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2862,7 +2862,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/messaging/alert_service.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2876,7 +2876,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/messaging/charts.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2890,7 +2890,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/messaging/consenso_vigilante.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2904,7 +2904,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/pipeline/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2918,7 +2918,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/pipeline/backcast.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2932,7 +2932,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/pipeline/clima_gapfill_2026.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2949,7 +2949,7 @@
     "help_note": "usage: clima_gapfill_2026.py [-h] --db DB [--dry-run]"
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/pipeline/data_pipeline.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2963,7 +2963,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/pipeline/data_pipeline_locf_patch.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2977,7 +2977,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/pipeline/entrenamiento.py",
     "ast_ok": true,
     "ast_err": "",
@@ -2991,7 +2991,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/pipeline/entrenar_paralelo.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3005,7 +3005,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/pipeline/juez_cycle_register.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3019,7 +3019,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/pipeline/layer_runners.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3033,7 +3033,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/pipeline/legacy_loader.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3047,7 +3047,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/pipeline/mantenimiento.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3061,7 +3061,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/pipeline/reporte_engine.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3075,7 +3075,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/pipeline/reporte_sentinel.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3089,7 +3089,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/pipeline/scheduler_reportes.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3103,7 +3103,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/pipeline/sismos_refetch_recent.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3121,7 +3121,7 @@
     "help_note": "Traceback (most recent call last):"
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/pipeline/topologia_cascada.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3140,7 +3140,7 @@
     "help_note": "Traceback (most recent call last):"
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/pipeline/verificacion.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3154,7 +3154,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/telegram/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3168,7 +3168,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/telegram/bot.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3182,7 +3182,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/watchdog/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3196,7 +3196,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/infrastructure/watchdog/network_watchdog.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3210,7 +3210,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/layers/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3224,7 +3224,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/layers/geodynamic/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3238,7 +3238,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/layers/geodynamic/alfa1/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3252,7 +3252,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/layers/geodynamic/alfa1/agent.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3266,7 +3266,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/layers/geodynamic/alfa2/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3280,7 +3280,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/layers/geodynamic/alfa2/agent.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3294,7 +3294,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/layers/geodynamic/beta1/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3308,7 +3308,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/layers/geodynamic/beta1/agent.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3322,7 +3322,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/layers/geodynamic/beta2/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3336,7 +3336,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/layers/geodynamic/beta2/agent.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3350,7 +3350,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/layers/geodynamic/delta/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3364,7 +3364,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/layers/geodynamic/delta/agent.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3378,7 +3378,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/layers/geodynamic/jupiter/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3392,7 +3392,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/layers/geodynamic/jupiter/agent.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3406,7 +3406,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/layers/geodynamic/loki/agent.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3420,7 +3420,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/layers/geodynamic/omega/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3434,7 +3434,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/layers/geodynamic/omega/agent.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3448,7 +3448,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/layers/geodynamic/padre/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3462,7 +3462,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/layers/geodynamic/padre/agent.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3476,7 +3476,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "sentinel_omega/layers/lottery_standalone/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3490,12 +3490,12 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "shutdown.py",
     "ast_ok": true,
     "ast_err": "",
     "compile_ok": false,
-    "compile_err": "[Errno 13] Permission denied: '/home/deamon/workspaces/sentinel_omega/__pycache__/shutdown.cpython-311.pyc.128714782170672'",
+    "compile_err": "[Errno 13] Permission denied: '/home/deamon/Sentinel_Omega/sentinel_omega/__pycache__/shutdown.cpython-311.pyc.128714782170672'",
     "has_main": true,
     "uses_argparse": true,
     "cli_flags": [
@@ -3506,7 +3506,7 @@
     "help_note": "usage: shutdown.py [-h] [--force]"
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "tests/__init__.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3520,7 +3520,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "tests/test_agents.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3534,7 +3534,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "tests/test_api_connectors.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3548,7 +3548,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "tests/test_cimatica_correo.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3562,7 +3562,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "tests/test_consenso_vigilante.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3576,7 +3576,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "tests/test_entrenar_paralelo.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3590,7 +3590,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "tests/test_firmas.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3604,7 +3604,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "tests/test_infrastructure.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3618,7 +3618,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "tests/test_jupiter.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3632,7 +3632,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "tests/test_normalizacion.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3646,7 +3646,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "tests/test_pipeline.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3660,7 +3660,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "tests/test_precursor.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3674,7 +3674,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "tests/test_reporte_agentes.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3688,7 +3688,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "tests/test_schumann_filter.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3702,7 +3702,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/sentinel_omega",
+    "root": "/home/deamon/Sentinel_Omega/sentinel_omega",
     "script": "tests/test_snt_engine.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3716,7 +3716,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/deploy",
+    "root": "/home/deamon/Sentinel_Omega/deploy",
     "script": "aciertos_reporte.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3730,7 +3730,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/deploy",
+    "root": "/home/deamon/Sentinel_Omega/deploy",
     "script": "bootstrap_omega.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3744,7 +3744,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/deploy",
+    "root": "/home/deamon/Sentinel_Omega/deploy",
     "script": "cleanup_storage.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3765,7 +3765,7 @@
     "help_note": "usage: cleanup_storage.py [-h] [--apply] [--keep-backups KEEP_BACKUPS]"
   },
   {
-    "root": "/home/deamon/workspaces/deploy",
+    "root": "/home/deamon/Sentinel_Omega/deploy",
     "script": "enviar_correos.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3779,7 +3779,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/deploy",
+    "root": "/home/deamon/Sentinel_Omega/deploy",
     "script": "generar_reporte.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3793,7 +3793,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/deploy",
+    "root": "/home/deamon/Sentinel_Omega/deploy",
     "script": "jupiter_correlaciones.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3807,7 +3807,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/deploy",
+    "root": "/home/deamon/Sentinel_Omega/deploy",
     "script": "rebuild_completo.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3825,7 +3825,7 @@
     "help_note": "usage: rebuild_completo.py [-h] [--no-wipe] [--no-vacuum] [--push RAMA]"
   },
   {
-    "root": "/home/deamon/workspaces/deploy",
+    "root": "/home/deamon/Sentinel_Omega/deploy",
     "script": "reporte_ejecutivo.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3839,7 +3839,7 @@
     "help_note": ""
   },
   {
-    "root": "/home/deamon/workspaces/deploy",
+    "root": "/home/deamon/Sentinel_Omega/deploy",
     "script": "reporte_periodico.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3858,7 +3858,7 @@
     "help_note": "usage: reporte_periodico.py [-h] [--comparativo] [--semanal] [--mensual]"
   },
   {
-    "root": "/home/deamon/workspaces/deploy",
+    "root": "/home/deamon/Sentinel_Omega/deploy",
     "script": "tuning_db.py",
     "ast_ok": true,
     "ast_err": "",
@@ -3875,7 +3875,7 @@
     "help_note": "usage: tuning_db.py [-h] [--diario] [--mensual]"
   },
   {
-    "root": "/home/deamon/workspaces/deploy",
+    "root": "/home/deamon/Sentinel_Omega/deploy",
     "script": "verificacion_juez.py",
     "ast_ok": true,
     "ast_err": "",

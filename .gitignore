@@ -99,3 +99,26 @@ sentinel_omega/data/schumann_eskdalemuir/
 # Son 5,6 MB de un momento concreto; el modelo bueno es el que está en
 # `models/`, y si la compuerta niega, el anterior ya se queda solo.
 sentinel_omega/models_pre_retrain_*/
+
+# --- barrido de secretos D5, 2026-11-12: huecos medidos ---
+*.DB
+*.bak
+*.~1~
+*.t2c-bak
+*.bak-p0c
+*2026-11-10-t2
+sentinel_omega/data/estado_inmediato.json
+sentinel_omega/data/sentinel_omega_heartbeat.json
+sentinel_experto/
+sentinel_omega/infrastructure/dashboard/web/storybook-static/
+skills/
+respaldos-p0a-20261110/
+06_DASHBOARD_WEB.txt
+Untitled-1.html
+test_dashboard.html
+deploy/.env - copia.bak:Zone.Identifier
+
+# --- D5, 2026-11-12/13: patrones insensibles a mayusculas (condicion de Elan) ---
+*.[dD][bB]
+*.[dD][bB]-wal
+*.[dD][bB]-shm

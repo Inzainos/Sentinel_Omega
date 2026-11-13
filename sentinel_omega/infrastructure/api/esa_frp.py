@@ -76,6 +76,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from sentinel_omega.infrastructure.api.circuit_breaker import circuit
+
 logger = logging.getLogger(__name__)
 
 COLECCION = "S3_SLSTR_L2FRP"
@@ -508,6 +510,7 @@ def _producto_local(dag, prod) -> Path:
     return destino
 
 
+@circuit("esa_frp")
 def medir_frp(
     zonas: List[str],
     days: int = 7,

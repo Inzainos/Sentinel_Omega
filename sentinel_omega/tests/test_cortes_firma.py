@@ -1,7 +1,7 @@
 """Cortes del 2026-10-04 y agregados de la ventana sismica.
 
-2.5 arma la firma, 4.5 es la prediccion, 6 dispara la alerta.
-La bajada USGS de 2.5 a 4.49 no entra aqui.
+2.5 arma la firma, 5.5 es la prediccion (Molchan gain > 1), 6 dispara la alerta.
+La bajada USGS de 2.5 a 5.49 no entra aqui.
 """
 import sqlite3
 
@@ -27,7 +27,7 @@ NUEVAS = [
 
 def test_los_tres_cortes():
     assert MIN_MAGNITUD_OBSERVAR == 2.5
-    assert MIN_MAGNITUD_FIRMA == 4.5
+    assert MIN_MAGNITUD_FIRMA == 5.5
     assert MIN_MAGNITUD_ALERTA == 6.0
 
 

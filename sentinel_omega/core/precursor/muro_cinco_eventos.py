@@ -1,18 +1,51 @@
 """
-Muro de los Cinco Eventos — Cross-Correlation Precursor Framework
+Muro de los Cuatro Eventos — Cross-Correlation Precursor Framework
+(antes «Muro de los Cinco Eventos»; el quinto muro se retiró el 2026-11-12,
+decisión D11 de Elán — ver «VERSIÓN» abajo. El nombre de la clase
+`MuroCincoEventos`, la tabla `TBL_MURO_EVENTOS` y el archivo se conservan
+por compatibilidad; lo que cambió es la membresía, no el instrumento.)
 
-Five walls of correlated signals that, when aligned, indicate elevated
+Four walls of correlated signals that, when aligned, indicate elevated
 natural event probability. Each wall draws from different data domains:
 
   Wall 1 — GEOFÍSICO: Earthquakes, volcanic, seismic clusters
   Wall 2 — ATMOSFÉRICO: Blue Jets, Sprites Rojos, Niebla Tule, pressure anomalies
   Wall 3 — OCEÁNICO: Tsunamis, maremotos, hurricane proximity
   Wall 4 — SOLAR/GEOMAGNÉTICO: Tormenta solar, perturbación, Schumann, Silent Trigger
-  Wall 5 — FINANCIERO/SOCIAL: Crypto fear, VIX spikes, bolsa bearish, trends
+  Wall 5 — FINANCIERO/SOCIAL: RETIRADO (D11, 2026-11-12). Crypto fear, VIX
+    spikes, bolsa bearish, trends. 0 activaciones en 16.031 eventos medidos
+    (INV-3, 2026-11-12); las variables SÍ se mueven (VIX p50 16,43, p90 26,69,
+    máx 82,69; FGI 28→20 en vivo el 12-nov), pero la regla ≥2 de 4 nunca
+    disparó. El detector `_scan_financial_correlation` sigue emitiendo la
+    detección `CORRELACION_FINANCIERA` (queda en `active_precursor_types`),
+    pero ya no pertenece a ningún muro ni suma a `walls_active`.
 
 The "muro" fires when >= 3 walls are simultaneously active with correlated
 precursors. The correlation score weights each wall by the confidence of
 its strongest active precursor.
+
+VERSIÓN — D11 (2026-11-12, decisión de Elán):
+  · Denominador 5 → 4. El umbral de breach se queda en 3 ABSOLUTO (3 dominios
+    distintos alterados a la vez), re-expresado como 3/4. NO se baja a 2:
+    la ganancia Molchan 1,93x (M>=6.0/24h) se midió con umbral 3, y bajarlo
+    exigiría re-medirla. El umbral vivo aprendido (SISMO_M6: 3 señales
+    [GEOFÍSICO, OCEÁNICO, SOLAR]) no incluía al financiero, así que el
+    breach vivo NO cambia; solo el denominador de display/score y el
+    fallback.
+  · `risk_label`: las bandas se conservan (>=4 CRÍTICO, >=3 ALTO, >=2
+    MODERADO, >=1 BAJO). Con 4 muros, CRÍTICO (>=4) ahora exige TODOS los
+    dominios alterados; ALTO (>=3) es el breach.
+  · `wall_financiero` en `TBL_MURO_EVENTOS` se CONSERVA (esquema forward-only,
+    regla 5): las filas nuevas escriben 0 (el muro ya no existe) y las
+    históricas conservan sus 0 (siempre fueron 0). `insert_muro_evento` lo
+    escribe vía `.get("FINANCIERO/SOCIAL", False)`, sin cambio.
+  · `WALL_FINANCIERO` se CONSERVA como constante (la importan el dashboard
+    `app.py` y `entrenamiento.py`); solo deja de ser miembro de
+    `WALL_MEMBERS`. El dashboard Streamlit y el FAQ siguen mostrando
+    «5 eventos» hasta que se reconstruya el front (D8); el reporte de
+    Telegram ya dice 4.
+  · `SENALES_MURO` (y con ella el re-aprendizaje de umbrales) pierde al
+    financiero automáticamente: es `tuple(WALL_MEMBERS)`.
 
 CALIBRACIÓN MEDIDA el 2026-10-02 sobre los 6.915 ciclos de `TBL_MURO_EVENTOS`.
 Sustituye el aviso del 26-sep, que daba 66 % de breach --- hoy es 32 %, tras
@@ -64,7 +97,8 @@ confianzas son constantes fijas por tipo (0,95 / 0,9 / 0,7): banderas, no
 medidas. Medido: su mejor cuartil da 1,89x contra el 1,93x del simple conteo de
 muros. No aporta información; sugiere una precisión que no existe.
 
-PENDIENTE, en orden de daño: (1) el muro FINANCIERO muerto, (2) SEISMIC_CLUSTER
+PENDIENTE, en orden de daño: (1) el muro FINANCIERO muerto — RESUELTO por
+D11 (2026-11-12): retirado, no recalibrado (0/16.031); (2) SEISMIC_CLUSTER
 y SILENT_TRIGGER siempre encendidos, (3) TSUNAMI al 27,9 %, (4) decidir si los
 pesos se hacen reales o se retiran.
 
@@ -86,7 +120,15 @@ WALL_GEOFISICO = "GEOFÍSICO"
 WALL_ATMOSFERICO = "ATMOSFÉRICO"
 WALL_OCEANICO = "OCEÁNICO"
 WALL_SOLAR = "SOLAR/GEOMAGNÉTICO"
+# RETIRADO del muro por D11 (2026-11-12): la constante se conserva porque la
+# importan `infrastructure/dashboard/app.py` (icono + lista de muros) y
+# `infrastructure/pipeline/entrenamiento.py` (lectura de la columna
+# `wall_financiero` en TBL_MURO_EVENTOS). Ya NO es miembro de WALL_MEMBERS.
 WALL_FINANCIERO = "FINANCIERO/SOCIAL"
+
+# Versión del muro: v1 = 5 muros (hasta 2026-11-12), v2 = 4 muros (D11).
+MURO_VERSION = "2.0"
+MURO_VERSION_FECHA = "2026-11-12"
 
 # FANTASMA estuvo en el muro GEOFÍSICO hasta el 2026-09-26, y no pertenece ahí:
 # el índice se calcula con Bz, viento solar y Schumann --- clima espacial puro.
@@ -125,9 +167,10 @@ WALL_MEMBERS = {
         PrecursorType.GRB,
         PrecursorType.FANTASMA,   # movido del geofísico: es clima espacial
     },
-    WALL_FINANCIERO: {
-        PrecursorType.CORRELACION_FINANCIERA,
-    },
+    # D11 (2026-11-12): WALL_FINANCIERO retirado — 0/16.031 activaciones.
+    # La constante WALL_FINANCIERO se conserva (la importan el dashboard y
+    # entrenamiento.py); el tipo CORRELACION_FINANCIERA sigue existiendo como
+    # detección del scanner, pero ya no pertenece a ningún muro.
 }
 
 
@@ -152,6 +195,8 @@ class MuroResult:
 
     @property
     def risk_label(self) -> str:
+        # D11: bandas conservadas con 4 muros — CRÍTICO (>=4) ahora exige
+        # TODOS los dominios alterados; ALTO (>=3) es el breach.
         if self.walls_active >= 4:
             return "CRÍTICO"
         if self.walls_active >= 3:
@@ -173,6 +218,10 @@ class MuroCincoEventos:
     ):
         # Fallback fijo si la tabla no da numero. El vivo lo relee
         # en cada evaluate; no se congela al arrancar.
+        # D11 (2026-11-12): el umbral se queda en 3 ABSOLUTO (3 dominios
+        # distintos), re-expresado como 3/4 tras retirar el financiero.
+        # No se baja a 2: la ganancia Molchan 1,93x (M>=6.0/24h) se midió
+        # con umbral 3.
         self.min_walls_for_breach = min_walls_for_breach
         self.db_path = db_path
         self.clase_vivo = clase_vivo
@@ -269,7 +318,7 @@ def format_muro_report(result: MuroResult) -> str:
     status_icon = "🔴" if result.muro_breach else "🟢"
 
     lines = [
-        f"<b>SENTINEL OMEGA — MURO DE LOS 5 EVENTOS</b>",
+        f"<b>SENTINEL OMEGA — MURO DE LOS 4 EVENTOS</b>",
         f"",
         f"<b>Estado:</b> {status_icon} {result.risk_label}",
         f"<b>Muros activos:</b> {result.walls_active}/{result.total_walls}",

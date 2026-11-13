@@ -325,28 +325,29 @@ export function SimplePie({ data, height = 150, maxSize = 168, legend = true, ce
   const r = R * 0.64;
   const colored = clean.map((d, i) => ({ ...d, _color: d.color || SERIES[i % SERIES.length] }));
 
-  let start = -Math.PI / 2;
-  const paths = colored.map((d, i) => {
+  const segments = colored.reduce((acc, d, i) => {
     const frac = Number(d.value) / total;
+    const start = acc.length === 0 ? -Math.PI / 2 : acc[acc.length - 1].a1;
     const a1 = start + frac * 2 * Math.PI;
+    acc.push({ start, a1, frac, index: i });
+    return acc;
+  }, [] as Array<{ start: number; a1: number; frac: number; index: number }>);
+
+  const paths = segments.map(({ start, a1, frac, index }) => {
     if (colored.length === 1 || frac >= 0.9999) {
       const mid = start + Math.PI;
-      const p = (
-        <g key={i}>
-          <path d={donutSegment(cx, cy, R, r, start, mid)} fill={d._color} />
-          <path d={donutSegment(cx, cy, R, r, mid, start + 2 * Math.PI)} fill={d._color} />
+      return (
+        <g key={index}>
+          <path d={donutSegment(cx, cy, R, r, start, mid)} fill={colored[index]._color} />
+          <path d={donutSegment(cx, cy, R, r, mid, start + 2 * Math.PI)} fill={colored[index]._color} />
         </g>
       );
-      start = a1;
-      return p;
     }
-    const p = (
-      <path key={i} d={donutSegment(cx, cy, R, r, start, a1)} fill={d._color}>
-        <title>{`${d.name}: ${Number(d.value).toLocaleString("es-MX")} (${(frac * 100).toFixed(1)}%)`}</title>
+    return (
+      <path key={index} d={donutSegment(cx, cy, R, r, start, a1)} fill={colored[index]._color}>
+        <title>{`${colored[index].name}: ${Number(colored[index].value).toLocaleString("es-MX")} (${(frac * 100).toFixed(1)}%)`}</title>
       </path>
     );
-    start = a1;
-    return p;
   });
 
   return (

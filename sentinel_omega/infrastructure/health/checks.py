@@ -22,7 +22,7 @@ class HealthStatus:
     def to_dict(self):
         return {"healthy": self.healthy, "timestamp": self.timestamp, "version": self.version, "summary": self.summary, "checks": [asdict(c) for c in self.checks]}
 class HealthChecker:
-    def __init__(self, db_path="/home/deamon/workspaces/sentinel_omega/data/SENTINEL_OMEGA_PRO.db", version="2.5.4"):
+    def __init__(self, db_path="/home/deamon/Sentinel_Omega/sentinel_omega/data/SENTINEL_OMEGA_PRO.db", version="2.5.4"):
         self.db_path = Path(db_path)
         self.version = version
     def check_database(self):

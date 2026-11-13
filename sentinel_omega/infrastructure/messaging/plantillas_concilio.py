@@ -40,7 +40,7 @@ from sentinel_omega.core.nodos import (
 logger = logging.getLogger(__name__)
 
 DIR_PLANTILLAS = Path(
-    "/home/deamon/workspaces/estado/plantillas"
+    "/home/deamon/Sentinel_Omega/estado/plantillas"
 )
 ESTADO_FILE = "estado_plantillas.json"
 
@@ -150,6 +150,29 @@ def snapshot_2h(conn: sqlite3.Connection) -> Dict[str, Any]:
     except Exception as exc:  # noqa: BLE001 — la plantilla sale igual
         logger.warning("plantillas: tono cimático ilegible: %s", exc)
         snap["tono"] = None
+
+    # Evidencia cimática del Padre (2026-10-26): qué vísperas históricas
+    # empareja la figura viva (idéntica o similar). EVIDENCIA con etiqueta
+    # honesta — la calibración (medir_cimatica_evidencia: 147 vísperas LOO
+    # vs 44 calmas) midió que la calma empareja igual o MÁS (15,9% de las
+    # calmas son idénticas a alguna víspera): contexto, nunca predicción.
+    # La figura viva: el ÚLTIMO patrón cimático (su telemetría completa),
+    # que el launcher refresca cada ciclo.
+    try:
+        from sentinel_omega.core.firmas.biblioteca_cimatica import (
+            cimatica_evidencia,
+        )
+        fila = conn.execute(
+            "SELECT telemetria_json FROM tbl_cimatica_patrones "
+            "ORDER BY ultima_vez DESC LIMIT 1"
+        ).fetchone()
+        feats = json.loads(fila[0]) if fila and fila[0] else {}
+        snap["cimatica_evidencia"] = (
+            cimatica_evidencia(conn, feats) if feats else None
+        )
+    except Exception as exc:  # noqa: BLE001 — la plantilla sale igual
+        logger.warning("plantillas: evidencia cimática ilegible: %s", exc)
+        snap["cimatica_evidencia"] = None
 
     try:
         row = conn.execute(
@@ -270,6 +293,20 @@ def _render_p2h(snap: Dict[str, Any]) -> str:
         if dists:
             L.append(f"🎼 Cimática espectral: régimen <b>{tono.get('tono')}</b> "
                      f"({dists})")
+    ev = snap.get("cimatica_evidencia")
+    if ev and ev.get("mejor_sim"):
+        # El filtro cimático del Padre: la figura viva contra la
+        # biblioteca de vísperas. La etiqueta va PEGADA al número porque
+        # la calibración mostró que la calma empareja igual — sin ella
+        # esta línea se leería como predicción y no lo es.
+        if ev.get("match_exacto"):
+            L.append(f"⚛️ Figura del Padre: <b>IDÉNTICA</b> a la víspera de "
+                     f"{ev['mejor_n_eventos']}×<b>{ev['mejor_clase']}</b> "
+                     f"— contexto, no predicción")
+        else:
+            L.append(f"⚛️ Figura del Padre: similar {_f(ev['mejor_sim'], 2)} a "
+                     f"víspera de <b>{ev['mejor_clase']}</b> "
+                     f"(n={ev['mejor_n_eventos']}) — contexto, no predicción")
     L.append("")
     sen = snap.get("senales") or []
     if sen:
@@ -432,13 +469,18 @@ def generar_y_enviar(tipo: str, conn: sqlite3.Connection, db_path: str) -> bool:
              .replace("<i>", "*").replace("</i>", "*"),
         encoding="utf-8")
 
-    marcar(db_path, tipo)
     try:
         from sentinel_omega.infrastructure.api.telegram import send_alert
         ok = send_alert(texto)
         logger.info("PLANTILLA %s %s (%d señales)", tipo.upper(),
                     "enviada" if ok else "encolada/falló",
                     len(snap.get("senales") or []))
+        # La marca SOLO después del envío exitoso (2026-11-10): antes se
+        # marcaba primero y un fallo de Telegram perdía la plantilla hasta
+        # el siguiente slot. Si no salió (ok False o excepción), la marca
+        # no se mueve y la siguiente corrida reintenta.
+        if ok:
+            marcar(db_path, tipo)
         return ok
     except Exception as exc:  # noqa: BLE001 — persistida aunque no vuele
         logger.warning("PLANTILLA %s persistida pero no enviada: %s", tipo, exc)
@@ -447,7 +489,7 @@ def generar_y_enviar(tipo: str, conn: sqlite3.Connection, db_path: str) -> bool:
 
 # ── Snapshot para la MiniApp (fresco cada ciclo, ≤5 min) ─────────────────────
 
-MINIAPP_JSON = Path("/home/deamon/workspaces/estado/miniapp_estado.json")
+MINIAPP_JSON = Path("/home/deamon/Sentinel_Omega/estado/miniapp_estado.json")
 
 
 def snapshot_miniapp(conn: sqlite3.Connection) -> Dict[str, Any]:
@@ -529,7 +571,7 @@ def snapshot_miniapp(conn: sqlite3.Connection) -> Dict[str, Any]:
         snap["sismos_recientes"] = [
             {"ts": r[0], "mag": r[1], "lugar": r[2]}
             for r in conn.execute(
-                "SELECT timestamp, magnitude, place FROM TBL_HISTORICO_SISMICO "
+                "SELECT timestamp, magnitude, region FROM TBL_HISTORICO_SISMICO "
                 "WHERE magnitude >= 4.5 ORDER BY timestamp DESC LIMIT 5"
             ).fetchall()
         ]

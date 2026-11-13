@@ -13,36 +13,38 @@ import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { BarraLateral } from "@/components/BarraLateral"
 import { PresentacionTab } from "@/components/tabs/PresentacionTab"
 import { PrincipalTab } from "@/components/tabs/PrincipalTab"
-import { SintesisTab } from "@/components/tabs/SintesisTab"
 import { PrediccionesTab } from "@/components/tabs/PrediccionesTab"
 import { MapasTab } from "@/components/tabs/MapasTab"
-import { SeñalesTab } from "@/components/tabs/SeñalesTab"
-import { CimaticaTab } from "@/components/tabs/CimaticaTab"
+import { SenalesTab } from "@/components/tabs/SenalesTab"
 import { ModelosTab } from "@/components/tabs/ModelosTab"
+import { ReportesTab } from "@/components/tabs/ReportesTab"
+import { CimaticaTab } from "@/components/tabs/CimaticaTab"
 import { LokiTab } from "@/components/tabs/LokiTab"
 import { PadreJuezTab } from "@/components/tabs/PadreJuezTab"
-import { ReportesTab } from "@/components/tabs/ReportesTab"
+import { EspacioFirmasTab } from "@/components/tabs/EspacioFirmasTab"
+import { SintesisTab } from "@/components/tabs/SintesisTab"
 
 export default function App() {
   return (
     <BrowserRouter>
-      <div className="flex h-screen bg-surface">
+      <div className="flex h-screen bg-bg-deep">
         <BarraLateral />
-        <main className="flex-1 overflow-y-auto p-6 bg-surface">
+        <main className="flex-1 overflow-y-auto p-6 bg-bg-deep">
           <ErrorBoundary>
             <Routes>
               <Route path="/" element={<PrincipalTab />} />
               <Route path="presentacion" element={<PresentacionTab />} />
               <Route path="principal" element={<PrincipalTab />} />
-              <Route path="sintesis" element={<SintesisTab />} />
               <Route path="predicciones" element={<PrediccionesTab />} />
               <Route path="mapas" element={<MapasTab />} />
-              <Route path="senales" element={<SeñalesTab />} />
-              <Route path="cimatica" element={<CimaticaTab />} />
+              <Route path="senales" element={<SenalesTab />} />
               <Route path="modelos" element={<ModelosTab />} />
-              <Route path="loki" element={<LokiTab />} />
-              <Route path="padrejuez" element={<PadreJuezTab />} />
               <Route path="reportes" element={<ReportesTab />} />
+              <Route path="cimatica" element={<CimaticaTab />} />
+              <Route path="loki" element={<LokiTab />} />
+              <Route path="padre-juez" element={<PadreJuezTab />} />
+              <Route path="espacio-firmas" element={<EspacioFirmasTab />} />
+              <Route path="sintesis" element={<SintesisTab />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </ErrorBoundary>

@@ -39,14 +39,17 @@ from typing import Optional, Tuple
 
 import numpy as np
 from sentinel_omega.infrastructure.api._http import get_session
+from sentinel_omega.infrastructure.api._redact import sin_credenciales
+from sentinel_omega.infrastructure.api.circuit_breaker import circuit
 
 logger = logging.getLogger(__name__)
 
 # sosrff.tsu.ru está MUERTO (imagen congelada 13 meses, sección 26 de la
 # bitácora del 28-sep). El sucesor sos70.ru sirve el mismo shm.jpg vivo.
+# Aumentado a 30s el 2026-11-06 por timeouts persistentes en sos70.ru
 TOMSK_URL = "https://sos70.ru/provider.php?file=shm.jpg"
 UA = "Mozilla/5.0 (X11; Linux x86_64) SentinelOmega-schumann/1.0"
-TIMEOUT = 15
+TIMEOUT = 30
 FUNDAMENTAL_HZ = 7.83
 ROI_FRACTION = 0.4
 HSV_LOWER = np.array([0, 0, 180])
@@ -59,6 +62,7 @@ _NO_LEIDA = object()
 _LAST_MODIFIED: dict = {}  # path -> Last-Modified (UTC) of the downloaded image
 
 
+@circuit("tomsk")
 def fetch_schumann_spectrogram(
     save_dir: Optional[str] = None,
 ) -> Optional[str]:
@@ -88,7 +92,7 @@ def fetch_schumann_spectrogram(
         _LAST_MODIFIED[str(path)] = _parse_last_modified(resp.headers.get("Last-Modified"))
         return str(path)
     except Exception as e:
-        logger.error(f"Tomsk spectrogram download failed: {e}")
+        logger.error(f"Tomsk spectrogram download failed: {sin_credenciales(e)}")
         return None
 
 
@@ -156,7 +160,7 @@ def analyze_spectrogram(image_path: str) -> Optional[Tuple[Optional[float], floa
                     activity_pct)
         return None, activity_pct
     except Exception as e:
-        logger.error(f"Spectrogram analysis failed: {e}")
+        logger.error(f"Spectrogram analysis failed: {sin_credenciales(e)}")
         return None
 
 
@@ -322,12 +326,14 @@ def guardar_sha_ingestado(sha: str, db_path: Optional[Path] = None) -> bool:
         return False
 
 
+@circuit("tomsk")
 def fetch_schumann_resonance(
     save_dir: Optional[str] = None,
     cleanup: bool = True,
     previa=_NO_LEIDA,
     ahora: Optional[float] = None,
     db_path: Optional[Path] = None,
+    novedad_requerida: bool = True,
 ) -> Optional[Tuple[float, float]]:
     """
     Full pipeline: download spectrogram → WPC analysis → (hz, activity_pct).
@@ -389,12 +395,18 @@ def fetch_schumann_resonance(
                 f"(sha256 {sha_img[:12]})"
             )
         elif (
-            previa is not None
+            novedad_requerida
+            and previa is not None
             and abs(float(pct) - float(previa[1])) < 1e-9
         ):
             # Regla del 2026-09-27 conservada, actualizada al retiro del Hz:
             # un valor que repite exacto la última lectura viva (hoy: la
             # ACTIVIDAD; el hz es None por diseño) no aporta información.
+            # SOLO aplica cuando se pide novedad (el fetch por ciclo, que
+            # escribía 288 filas/día, necesitaba el anti-spam). El CORTE
+            # DIARIO (2026-10-26) lo apaga a propósito: «hoy también fue
+            # 2,68 %» es el DATO del día, no ruido — sin esto, los días de
+            # Schumann estable dejarían huecos en tbl_schumann_diario.
             motivo = (
                 "imagen nueva pero el valor repite la última lectura viva "
                 f"({pct} %)"

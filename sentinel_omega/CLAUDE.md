@@ -102,7 +102,7 @@ sin leer un dato de Schumann, y con su ruta viva al 0,02 % el sistema dio
 - **Molchan**: ganancia = hit_rate ÷ tasa base (modelo nulo alertar-siempre,
   `core/precursor/baseline.py`). Ganancia ≤ 1 = sin habilidad real.
 - **Pisos**: el sistema MIDE desde M3.3 (piso real del backcast); ALERTA solo
-  desde M4.5 (solo el Padre avisa). `MIN_MAGNITUD_FIRMA=4.5`.
+  desde M5.5 (solo el Padre avisa; Molchan gain > 1). `MIN_MAGNITUD_FIRMA=5.5`.
 - **Vara de asertividad**: SOLO la vista `viva_real` (fase='viva', append-only);
   verdad POR FILA — ventana propia de 72h + nodos de la propia predicción.
 
@@ -112,7 +112,7 @@ sin leer un dato de Schumann, y con su ruta viva al 0,02 % el sistema dio
 - Dev: Vite 6.4.3, proxy `/api`→8787. Build: 76 módulos → `dist/`.
 - API: `infrastructure/dashboard/api.py` + 13 compat aliases sin `/api`
   (`/health`, `/kpis`, `/telemetry/*`, `/consenso/*`, `/analysis/*`, `/agents/*`,
-  `/system/*`). CORS para 5173/5174/4173.
+  `/system/*`). CORS para **8128** (Dash principal), 5173/5174/4173 (React legacy).
 - **`/api/estado-vivo`** (2026-10-20): sirve el JSON unificado del launcher
   (`estado/miniapp_estado.json`, ≤5 min) — señales vivas con countdown,
   auditoría con ganancia, serie, cimática, sismos; `edad_s` explícito.

@@ -1,4 +1,5 @@
 """
+from sentinel_omega.infrastructure.api._redact import sin_credenciales
 Topologia en Cascada — ETL reusable para Sentinel Omega
 v1.0 — 13 ago 2026
 
@@ -179,7 +180,7 @@ def fetch_sismos_usgs(year: int) -> pd.DataFrame:
         logger.info(f"  {year}: {len(df)} sismos M{MIN_MAGNITUD_USGS}+")
         return df[keep].copy()
     except Exception as e:
-        logger.error(f"  Fallo al descargar USGS {year}: {e}")
+        logger.error(f"  Fallo al descargar USGS {year}: {sin_credenciales(e)}")
         return pd.DataFrame()
 
 
@@ -210,7 +211,7 @@ def fetch_volcanes_nasa() -> pd.DataFrame:
         logger.info(f"  MSVOLSO2L4: {len(df)} eventos volcanicos ({latest})")
         return df[["volcano", "lat", "lon", "fecha", "type", "vei", "so2_kt"]]
     except Exception as e:
-        logger.error(f"Fallo al descargar catalogo volcanico: {e}")
+        logger.error(f"Fallo al descargar catalogo volcanico: {sin_credenciales(e)}")
         return pd.DataFrame()
 
 

@@ -4,7 +4,7 @@ import http.server
 import os
 import urllib.parse
 
-DIST = "/home/deamon/workspaces/sentinel_omega/infrastructure/dashboard/web/dist"
+DIST = "/home/deamon/Sentinel_Omega/sentinel_omega/infrastructure/dashboard/web/dist"
 PORT = 5173
 
 class SPAHandler(http.server.SimpleHTTPRequestHandler):
@@ -21,6 +21,6 @@ class SPAHandler(http.server.SimpleHTTPRequestHandler):
         super().end_headers()
 
 if __name__ == "__main__":
-    server = http.server.HTTPServer(("127.0.0.1", PORT), SPAHandler)
+    server = http.server.HTTPServer(("0.0.0.0", PORT), SPAHandler)
     print(f"SPA on :{PORT}", flush=True)
     server.serve_forever()

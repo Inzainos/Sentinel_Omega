@@ -11,7 +11,7 @@ Exporta a sentinel_omega/models/*.onnx — listo para los agentes.
 
 Uso:
   python -m sentinel_omega.models.train_onnx_from_db --db-path data/SENTINEL_OMEGA_PRO.db
-  python sentinel_omega/models/train_onnx_from_db.py --db-path ... --min-samples 50
+  python sentinel_omega/models/train_onnx_from_db.py --db-path ... --min-samples 60
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ logger = logging.getLogger("onnx_retrain")
 from sentinel_omega.models.rasgos_juez import cargar_reconstruidos
 
 MODELS_DIR = Path(__file__).resolve().parent
-MIN_SAMPLES = 80
+MIN_SAMPLES = 60  # P2 2026-11-10: unificado en 60 (código 80 / servicio 50 / MIN_PARA_MEDIR 60)
 RANDOM_SEED = 42
 
 # ─── Coste de equivocarse, que es lo que pesa cada muestra ────────────────────
@@ -239,7 +239,7 @@ def load_firmas_from_db(db_path: str) -> Dict[str, Tuple[np.ndarray, np.ndarray,
 # extraíble, así que el objetivo sale con una tasa base del ~29 % --- dos clases
 # de verdad, sin inventar una sola fila (regla 2).
 HORIZONTE_H = 190          # lag aprendido de SISMO_M6 en `tbl_lag_anticipacion`
-MAG_OBJETIVO = 4.5         # MIN_MAGNITUD_FIRMA: el piso de lo exigible
+MAG_OBJETIVO = 5.5         # MIN_MAGNITUD_FIRMA: el piso de lo exigible (Molchan gain > 1)
 N_VENTANAS = 7000
 
 # La señal y la confianza del positivo salen de la magnitud que DE VERDAD
@@ -1076,7 +1076,8 @@ def retrain(db_path: str, min_samples: int = MIN_SAMPLES,
     logger.info("Compuerta de habilidad: aprueban %s · niega %s",
                 aprobados or "ninguno", negados or "ninguno")
     meta = {
-        "retrained_at": __import__("datetime").datetime.utcnow().isoformat() + "Z",
+        # P2 2026-11-10: utcnow() deprecado; mismo formato de salida (...Z), valor naive-equivalente
+        "retrained_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).replace(tzinfo=None).isoformat() + "Z",
         "db_path": str(db_path),
         "fuente": fuente,
         "objetivo": {"horizonte_h": HORIZONTE_H, "mag_min": MAG_OBJETIVO,

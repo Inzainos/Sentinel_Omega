@@ -325,7 +325,10 @@ export function Globe3D({
     };
   }, [nodes, quakes, focus]);
 
-  tipRef.current = tip;
+  // Sync tipRef with tip state (must be in effect, not during render)
+  useEffect(() => {
+    tipRef.current = tip;
+  }, [tip]);
 
   if (noCv) {
     return (
@@ -347,8 +350,7 @@ export function Globe3D({
           <div
             className="mono pointer-events-none absolute z-10 max-w-64 rounded border border-base-700 bg-base-850 px-2 py-1 text-meta text-base-100 shadow"
             style={{
-              left: `${Math.min(tip.x + 12, (wrapRef.current?.clientWidth ?? 720) - 180)}px`,
-              top: `${Math.max(4, tip.y - 34)}px`,
+              transform: `translate(${Math.min(tip.x + 12, 720 - 180)}px, ${Math.max(4, tip.y - 34)}px)`,
             }}
           >
             {tip.text}

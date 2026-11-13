@@ -23,9 +23,11 @@ Usage:
 from __future__ import annotations
 
 import logging
+import sqlite3
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Dict, List, Optional
 
 import numpy as np
@@ -334,8 +336,54 @@ _TOMSK_BASE = "http://sosrff.tsu.ru/new/shf.txt"
 _SR1_BASELINE_HZ = 7.83
 
 
-def _schumann_from_wpc() -> Optional[SchumannData]:
-    """Single-day series from live Tomsk spectrogram WPC (TXT feed is 404)."""
+def _schumann_from_wpc(db_path: Optional[Path] = None) -> Optional[SchumannData]:
+    """Single-day series from live Tomsk spectrogram WPC (TXT feed is 404).
+    
+    Args:
+        db_path: Optional database path. Defaults to production DB.
+                 Use in-memory DB for testing.
+    """
+    if db_path is None:
+        db_path = Path(__file__).resolve().parents[2] / "data" / "SENTINEL_OMEGA_PRO.db"
+    
+    # Respetar corte diario: si hoy ya hay registro, no descargar de nuevo
+    try:
+        if db_path.exists():
+            day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            conn = sqlite3.connect(str(db_path), timeout=5)
+            fila = conn.execute(
+                "SELECT actividad, actividad_raw, frecuencia_hz, fuente, calidad, confianza, sesgo_aplicado "
+                "FROM tbl_schumann_diario WHERE fecha = ?",
+                (day,),
+            ).fetchone()
+            conn.close()
+            if fila:
+                actividad, actividad_raw, frecuencia_hz, fuente, calidad, confianza, sesgo = fila
+                if actividad is not None:
+                    # Usar valor del corte diario calibrado, evitar fetch
+                    act = float(actividad)
+                    amp = max(0.05, act / 100.0)
+                    # frecuencia_hz puede ser None (Tomsk no mide Hz desde 2026-10-09):
+                    # freq = None explicito — NO se fabrica 7.83 (T-2, 2026-11-10).
+                    # La desviacion viaja NaN y los pares se filtran solos en cross
+                    # (igual que ya hace _schumann_from_db con AVG NULL).
+                    freq = float(frecuencia_hz) if frecuencia_hz is not None else None
+                    return SchumannData(
+                        dates=[day],
+                        freq_hz=np.array([freq if freq is not None else np.nan], dtype=float),
+                        amplitude=np.array([amp], dtype=float),
+                        freq_deviation=np.array(
+                            [np.nan if freq is None else freq - _SR1_BASELINE_HZ],
+                            dtype=float,
+                        ),
+                    )
+                # Si el día está marcado como fallido, no reintentar
+                if fuente == "tomsk_fallido":
+                    logger.info("Schumann diario hoy fallido (tomsk_fallido), se omite fetch WPC")
+                    return None
+    except Exception as e:
+        logger.debug("Schumann diario check falló: %s", e)
+
     try:
         from sentinel_omega.infrastructure.api.schumann import fetch_schumann_resonance
     except Exception:
@@ -355,12 +403,15 @@ def _schumann_from_wpc() -> Optional[SchumannData]:
     day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     # Map activity% → relative amplitude around 1.0
     amp = max(0.05, float(act) / 100.0)
-    freq = float(hz)
+    # T-2 (2026-11-10): freq = None si Tomsk no da Hz — no fabricar 7.83.
+    freq = float(hz) if hz is not None else None
     return SchumannData(
         dates=[day],
-        freq_hz=np.array([freq], dtype=float),
+        freq_hz=np.array([freq if freq is not None else np.nan], dtype=float),
         amplitude=np.array([amp], dtype=float),
-        freq_deviation=np.array([freq - _SR1_BASELINE_HZ], dtype=float),
+        freq_deviation=np.array(
+            [np.nan if freq is None else freq - _SR1_BASELINE_HZ], dtype=float
+        ),
     )
 
 
@@ -379,7 +430,7 @@ def _schumann_from_db(days: int, db_path=None) -> Optional[SchumannData]:
     import sqlite3
     from pathlib import Path as _P
     candidates = [_P(db_path)] if db_path else [
-        _P("/home/deamon/workspaces/sentinel_omega/data/SENTINEL_OMEGA_PRO.db"),
+        _P("/home/deamon/Sentinel_Omega/sentinel_omega/data/SENTINEL_OMEGA_PRO.db"),
         _P(__file__).resolve().parents[2] / "data" / "SENTINEL_OMEGA_PRO.db",
     ]
     db = next((p for p in candidates if p.exists()), None)
@@ -586,7 +637,7 @@ def _space_weather_from_db(days: int) -> Optional[SpaceWeather]:
     import sqlite3
     from pathlib import Path as _P
     candidates = [
-        _P("/home/deamon/workspaces/sentinel_omega/data/SENTINEL_OMEGA_PRO.db"),
+        _P("/home/deamon/Sentinel_Omega/sentinel_omega/data/SENTINEL_OMEGA_PRO.db"),
         _P(__file__).resolve().parents[2] / "data" / "SENTINEL_OMEGA_PRO.db",
     ]
     db = next((p for p in candidates if p.exists()), None)

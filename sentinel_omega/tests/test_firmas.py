@@ -328,10 +328,13 @@ def _seed_backcast(conn, n_eventos=6):
 class TestEntrenamiento:
 
     def test_event_class(self):
-        assert _event_class(5.2) == "SISMO_M5"
+        # New enforceable floor: M>=5.5
+        assert _event_class(5.7) == "SISMO_M5"      # enforceable (Molchan gain > 1)
         assert _event_class(6.4) == "SISMO_M6"
         assert _event_class(7.8) == "SISMO_M7"
-        # enforcement floor: M4.5 is still "SISMO_M4" (exigible)
+        # 5.0-5.49: observed, not enforceable
+        assert _event_class(5.2) == "SISMO_M5_low"
+        # 4.5-4.99: observed, not enforceable
         assert _event_class(4.5) == "SISMO_M4"
         assert _event_class(4.9) == "SISMO_M4"
         # sub-threshold observation classes (non-exigible)

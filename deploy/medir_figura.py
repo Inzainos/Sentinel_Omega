@@ -13,8 +13,8 @@ Canales: solo clima espacial. Luna y LOD fuera (periodicos -> aliasing); la
 familia sismica fuera (Omori); Schumann no existe (880 filas, 76 % iguales).
 """
 import sys, sqlite3, random, bisect, datetime as dt, statistics as st
-sys.path.insert(0,"/home/deamon/workspaces")
-sys.path.insert(0,"/home/deamon/workspaces")
+sys.path.insert(0,"/home/deamon/Sentinel_Omega")
+sys.path.insert(0,"/home/deamon/Sentinel_Omega")
 import numpy as np
 from sentinel_omega.core.firmas import figura as F
 F.CANALES_ASTRO = ()

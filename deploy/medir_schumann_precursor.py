@@ -48,7 +48,7 @@ import sys
 
 import numpy as np
 
-sys.path.insert(0, "/home/deamon/workspaces")
+sys.path.insert(0, "/home/deamon/Sentinel_Omega")
 
 from sentinel_omega.infrastructure.api.schumann_granada import (  # noqa: E402
     TABLA as TABLA_DEFAULT,

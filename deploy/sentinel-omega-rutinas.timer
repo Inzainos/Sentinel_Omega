@@ -2,8 +2,11 @@
 Description=Corre las rutinas locales de Sentinel Omega cada 15 min
 
 [Timer]
-OnBootSec=5min
-OnUnitActiveSec=15min
+# OnCalendar (cada 15 min, reloj absoluto) en vez de OnBootSec/OnUnitActiveSec:
+# el monotónico se desancleó dos veces medido (bitácora 10-19 y el incidente
+# del 26-10: NextElapse=infinity/10h tras reconstruir las units). La marca en
+# data/estado_digesto.json evita dobles envíos igual.
+OnCalendar=*:0/15
 AccuracySec=1min
 Persistent=true
 

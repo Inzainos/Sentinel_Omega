@@ -1,7 +1,7 @@
 import sqlite3
 import pandas as pd
 
-DB = '/home/deamon/workspaces/sentinel_omega/data/SENTINEL_OMEGA_PRO.db'
+DB = '/home/deamon/Sentinel_Omega/sentinel_omega/data/SENTINEL_OMEGA_PRO.db'
 conn = sqlite3.connect(DB)
 
 df = pd.read_sql('SELECT timestamp_blk, bz_promedio FROM tbl_clima_espacial_raw ORDER BY timestamp_blk', conn)

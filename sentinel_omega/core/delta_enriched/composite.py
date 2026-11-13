@@ -33,6 +33,7 @@ Usage:
 from __future__ import annotations
 
 import logging
+import math
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -164,9 +165,13 @@ class DeltaCompositeSignal:
             if g.kp_max_3d is not None:
                 lines.append(f"  Kp max (3d)   : {g.kp_max_3d:.1f}  storm={g.storm_active}")
             if g.schumann_freq_hz is not None:
+                # La desviación puede ser None aunque haya frecuencia (o al
+                # revés en series futuras): no formatear un None con :+.3f.
+                _dev = (f" (Δ{g.schumann_freq_deviation:+.3f})"
+                        if g.schumann_freq_deviation is not None else "")
                 lines.append(
-                    f"  Schumann SR1  : {g.schumann_freq_hz:.3f} Hz  "
-                    f"(Δ{g.schumann_freq_deviation:+.3f})  anomaly={g.schumann_anomaly}"
+                    f"  Schumann SR1  : {g.schumann_freq_hz:.3f} Hz{_dev}  "
+                    f"anomaly={g.schumann_anomaly}"
                 )
         if self.trends_stress is not None:
             lines.append(f"  Trends stress : {self.trends_stress:.1f}/100")
@@ -179,6 +184,39 @@ class DeltaCompositeSignal:
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
+def _finito_o_none(x: Any) -> Optional[float]:
+    """float finito o None: NaN/+-inf nunca salen de composite (T2, 2026-11-10).
+
+    Mismo patrón que `repository._finito_o_none` / `data_pipeline._finito_o_none`
+    (T-2): el NaN se sanea EN LA FUENTE, aquí, no solo antes de persistir.
+    Faltante = None (regla 2 del repo: cero datos sintéticos; un 0.0 sería un
+    dato inventado). Los campos de GeophysicalContext ya son Optional[float],
+    y el llamador (`data_pipeline`) trata None como ausente.
+    """
+    try:
+        v = float(x)
+    except (TypeError, ValueError):
+        return None
+    return v if math.isfinite(v) else None
+
+
+def _nan_reduce_o_none(valores, func) -> Optional[float]:
+    """Reducción NaN-tolerante (nanmax/nanmin/nanmean) o None sin finitos.
+
+    `np.nanmax`/`np.nanmean` sobre un slice todo-NaN devuelven NaN (más un
+    RuntimeWarning): es el caso rutinario cuando la fuente está caída —
+    `fetchers.day_arr` rellena los días sin dato con NaN. Sin un valor
+    finito no hay reducción que calcular: None, no NaN.
+    """
+    try:
+        arr = np.asarray(valores, dtype=float)
+    except (TypeError, ValueError):
+        return None
+    if arr.size == 0 or not np.isfinite(arr).any():
+        return None
+    return _finito_o_none(func(arr))
+
 
 def _run_snt_pairs(
     prices,
@@ -216,19 +254,37 @@ def _extract_geo_context(data) -> Optional[GeophysicalContext]:
     ctx = GeophysicalContext()
 
     if sw is not None and len(sw.kp_max) >= 3:
-        ctx.kp_max_3d = float(np.nanmax(sw.kp_max[-3:]))
-        ctx.kp_mean_7d = float(np.nanmean(sw.kp_max[-7:])) if len(sw.kp_max) >= 7 else None
-        ctx.storm_active = bool(ctx.kp_max_3d >= 5.0)
+        # T2 (2026-11-10): nanmax/nanmean sobre un slice todo-NaN devuelven
+        # NaN (fetchers.day_arr rellena los días sin dato con NaN) y el NaN
+        # envenenaba hasta composite_score (min(nan, 0.3) es nan). None es el
+        # "sin dato" que los campos Optional ya contemplan.
+        ctx.kp_max_3d = _nan_reduce_o_none(sw.kp_max[-3:], np.nanmax)
+        ctx.kp_mean_7d = (
+            _nan_reduce_o_none(sw.kp_max[-7:], np.nanmean)
+            if len(sw.kp_max) >= 7 else None
+        )
+        ctx.storm_active = bool(
+            ctx.kp_max_3d is not None and ctx.kp_max_3d >= 5.0
+        )
         if len(sw.bz_min) >= 3:
-            ctx.bz_min_3d = float(np.nanmin(sw.bz_min[-3:]))
+            ctx.bz_min_3d = _nan_reduce_o_none(sw.bz_min[-3:], np.nanmin)
         if len(sw.solar_wind_speed) >= 1:
-            ctx.solar_wind_speed_mean = float(np.nanmean(sw.solar_wind_speed[-7:]))
+            ctx.solar_wind_speed_mean = _nan_reduce_o_none(
+                sw.solar_wind_speed[-7:], np.nanmean
+            )
 
     if sch is not None and len(sch.freq_hz) >= 1:
-        ctx.schumann_freq_hz = float(sch.freq_hz[-1])
-        ctx.schumann_freq_deviation = float(sch.freq_deviation[-1])
-        ctx.schumann_amplitude = float(sch.amplitude[-1])
-        ctx.schumann_anomaly = bool(abs(ctx.schumann_freq_deviation) > 0.15)
+        # T2 (2026-11-10): :229 — float(sch.freq_deviation[-1]) era NaN
+        # cuando la frecuencia viaja NaN (fetchers._schumann_from_db: el Hz
+        # es NULL desde el retiro del 2026-10-09 y freq_deviation = freqs -
+        # 7.83 propaga el NaN). Se sanea EN LA FUENTE: None, no 0.0.
+        ctx.schumann_freq_hz = _finito_o_none(sch.freq_hz[-1])
+        ctx.schumann_freq_deviation = _finito_o_none(sch.freq_deviation[-1])
+        ctx.schumann_amplitude = _finito_o_none(sch.amplitude[-1])
+        ctx.schumann_anomaly = bool(
+            ctx.schumann_freq_deviation is not None
+            and abs(ctx.schumann_freq_deviation) > 0.15
+        )
 
     return ctx
 

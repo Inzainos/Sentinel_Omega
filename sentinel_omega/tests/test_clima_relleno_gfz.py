@@ -15,12 +15,42 @@ Lo que estas pruebas protegen es la parte peligrosa --- que un relleno nunca
 sobreescriba un dato medido --- porque este guion escribe en la base de
 producción.
 """
+import importlib.util
 import sqlite3
+import sys
+from pathlib import Path
 
 import pandas as pd
 import pytest
 
-from sentinel_omega.infrastructure.pipeline import clima_relleno_gfz as crg
+# `clima_relleno_gfz` se ARCHIVÓ el 2026-11-10 (turno 1 de tuning, en
+# `archive/2026-11-10/`). La cobertura se mantiene cargando el módulo
+# desde su ruta archivada — sigue importándose limpio (solo stdlib en
+# el top-level; `fetch_kp_history` se importa perezoso dentro de
+# `kp_por_hora`, así que el `monkeypatch.setattr` de la fixture sobre
+# `sentinel_omega.infrastructure.api.gfz_kp` sigue funcionando). Si el
+# archivo archivado no está o no importa, el módulo entero se salta con
+# el motivo exacto en vez de romper la colección.
+_ARCHIVO_CRG = (
+    Path(__file__).resolve().parents[2]
+    / "archive" / "2026-11-10" / "clima_relleno_gfz.py"
+)
+try:
+    _spec = importlib.util.spec_from_file_location(
+        "clima_relleno_gfz_archivado", _ARCHIVO_CRG
+    )
+    _mod_crg = importlib.util.module_from_spec(_spec)
+    sys.modules["clima_relleno_gfz_archivado"] = _mod_crg
+    _spec.loader.exec_module(_mod_crg)
+except (FileNotFoundError, ImportError) as _exc:
+    pytest.skip(
+        "clima_relleno_gfz archivado en archive/2026-11-10/ el "
+        "2026-11-10 y el módulo archivado no se importa en este "
+        f"checkout: {_exc}",
+        allow_module_level=True,
+    )
+else:
+    crg = _mod_crg
 
 DDL = """
 CREATE TABLE tbl_clima_espacial_raw (

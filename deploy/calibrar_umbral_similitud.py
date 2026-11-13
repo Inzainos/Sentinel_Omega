@@ -19,8 +19,8 @@ from __future__ import annotations
 import json
 import sys
 
-sys.path.insert(0, "/home/deamon/workspaces")
-sys.path.insert(0, "/home/deamon/workspaces/deploy")
+sys.path.insert(0, "/home/deamon/Sentinel_Omega")
+sys.path.insert(0, "/home/deamon/Sentinel_Omega/deploy")
 
 from disenar_rasgos_padre import DB, muestras  # noqa: E402
 

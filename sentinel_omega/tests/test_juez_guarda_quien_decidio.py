@@ -118,3 +118,39 @@ def test_las_cuatro_claves_de_siempre_siguen_estando():
     for k in ("nodos", "padre_signal", "reasoning", "features_generales"):
         assert k in d, f"se perdió {k}"
     assert d["features_generales"] == {"kp_mean": 2.0}
+
+
+class TestEvidenciaCimaticaEnFilaPadre:
+    """La evidencia cimática del ciclo viaja en la fila del PADRE (2026-10-26).
+
+    El launcher la calcula y la deja en geo.metadata antes de registrar;
+    la fila del padre debe llevarla. None en filas sin medición — no se
+    rellena con calma falsa (regla 7/8)."""
+
+    def test_metadata_con_evidencia_llega_a_la_fila(self):
+        juez = _JuezFalso()
+        geo = _Geo([])
+        geo.metadata = {
+            "cimatica_evidencia": {
+                "presente": True, "match_exacto": False, "mejor_sim": 0.49,
+                "mejor_clase": "SISMO_M6", "mejor_n_eventos": 1,
+                "resumen": "figura viva similar 0.49 — CONTEXTO, no predicción",
+            }
+        }
+        register_cycle_predictions(juez, geo, matches=[], conn=None,
+                                   features={"kp_max": 3.0})
+        fila_padre = _fila(juez, "padre")
+        assert fila_padre is not None
+        ev = fila_padre["cimatica_evidencia"]
+        assert ev is not None and ev["mejor_clase"] == "SISMO_M6"
+        assert "no predicción" in ev["resumen"]
+
+    def test_sin_metadata_queda_none_honesto(self):
+        juez = _JuezFalso()
+        geo = _Geo([])
+        # sin atributo metadata o sin la clave → None, nunca inventado
+        register_cycle_predictions(juez, geo, matches=[], conn=None,
+                                   features={"kp_max": 3.0})
+        fila_padre = _fila(juez, "padre")
+        assert fila_padre is not None
+        assert fila_padre["cimatica_evidencia"] is None

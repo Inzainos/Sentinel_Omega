@@ -95,21 +95,21 @@ export function MapaFractal({
       </svg>
 
       {/* Leyenda */}
-      <div className="absolute bottom-4 right-4 flex flex-col gap-1 text-[0.7rem] text-fuente-desvanecido bg-superficie/80 p-2 rounded-md border border-border/50">
+      <div className="absolute bottom-4 right-4 flex flex-col gap-1 text-[0.7rem] text-faint bg-surface/80 p-2 rounded-md border border-border/50">
         <div className="flex items-center gap-1">
-          <div className="w-2 h-2 rounded-full bg-var(--color-calma)" />
+          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--color-calma)' }} />
           <span>Baja</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-2 h-2 rounded-full bg-var(--color-atencion)" />
+          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--color-atencion)' }} />
           <span>Media</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-2 h-2 rounded-full bg-var(--color-critico)" />
+          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--color-critico)' }} />
           <span>Alta</span>
         </div>
         <div className="flex items-center gap-1 mt-1">
-          <div className="w-2 h-2 rounded-full bg-var(--color-fuente-desvanecido)" />
+          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--color-fuente-desvanecido)' }} />
           <span>Sismos M≥4.5</span>
         </div>
       </div>

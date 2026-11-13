@@ -55,16 +55,18 @@ ESPERA_CANDADO_S = 120
 # el 2026-10-02: 13.571 commits = 207,6 s de 286,1 s). Ver el docstring de
 # `conexion_de_lote` para la medicion completa y lo que se canjea.
 from sentinel_omega.infrastructure.database.schema import conexion_de_lote
+from sentinel_omega.infrastructure.api._redact import sin_credenciales
 
 logger = logging.getLogger(__name__)
 
 # Cortes del Capitan, 2026-10-04.
 # 2.5 es el gatillo: el temblor chico arma la firma. Se lee de la tabla
 # que ya esta. Este diff no baja de USGS el tramo 2.5 a 4.49.
-# 4.5 es la prediccion que el sistema sostiene. Por debajo se observa
-# y no se cobra.
-# 6 es el muro. Ahi se dispara la alerta. Un 4.5 no la dispara.
-MIN_MAGNITUD_FIRMA = 4.5       # prediccion y castigo
+# 5.5 es la prediccion que el sistema sostiene con habilidad real.
+# Molchan gain medido 2026-11-06: M>=5.5 => 1.026x (GANANCIA REAL),
+# M>=4.5 => 0.993x (sin ganancia). Por debajo se observa y no se cobra.
+# 6 es el muro. Ahi se dispara la alerta. Un 5.5 no la dispara.
+MIN_MAGNITUD_FIRMA = 5.5       # prediccion y castigo (habilidad real Molchan)
 MIN_MAGNITUD_OBSERVAR = 2.5    # gatillo; lee lo ya guardado
 MIN_MAGNITUD_ALERTA = 6.0      # muro y alerta
 
@@ -356,10 +358,12 @@ def _event_class(mag: float) -> str:
         return "SISMO_M7"
     if mag >= 6.0:
         return "SISMO_M6"
+    if mag >= 5.5:
+        return "SISMO_M5"      # 5.5–5.99: piso de prediccion y castigo (Molchan gain > 1)
     if mag >= 5.0:
-        return "SISMO_M5"
+        return "SISMO_M5_low"  # 5.0–5.49: observado, no exigible (sin habilidad)
     if mag >= 4.5:
-        return "SISMO_M4"      # 4.5–4.99: piso de prediccion y castigo; la alerta es M6
+        return "SISMO_M4"      # 4.5–4.99: observado, no exigible
     if mag >= 4.0:
         return "SISMO_M4_obs"  # 4.0–4.49: observado, no exigible
     if mag >= 3.0:
@@ -482,7 +486,7 @@ def entrenar_reconocimiento(
     this builds the positive pattern-history used by resumen_por_bot() even
     before Fase 2 discipline runs.
 
-    Events below MIN_MAGNITUD_FIRMA (4.5) are non-enforceable: they generate
+    Events below MIN_MAGNITUD_FIRMA (5.5) are non-enforceable: they generate
     firmas and Juez ACIERTOs but never trigger discipline (castigo).
 
     bots: restrict registration to these bots (e.g. ["beta2", "delta"] for
@@ -938,7 +942,7 @@ def entrenar(
         sesgo_pre = evaluar_sesgo_aprendizaje(db_path, aplicar_castigo=False)
         logger.info(f"Sesgo PRE-entrenamiento (línea base): {sesgo_pre.get('por_bot')}")
     except Exception as e:
-        logger.warning(f"Sesgo pre-entrenamiento no disponible: {e}")
+        logger.warning(f"Sesgo pre-entrenamiento no disponible: {sin_credenciales(e)}")
 
     if paralelo and max_eventos:
         logger.warning(
@@ -966,7 +970,7 @@ def entrenar(
         from sentinel_omega.core.firmas.cimatica import entrenar_cimatica
         cimatica_stats = entrenar_cimatica(db_path, max_eventos=max_eventos)
     except Exception as e:
-        logger.warning(f"Entrenamiento cimático no disponible: {e}")
+        logger.warning(f"Entrenamiento cimático no disponible: {sin_credenciales(e)}")
 
     # ── Qué memoria es EXIGIBLE, antes de medir el sesgo ────────────────────
     #
@@ -995,7 +999,7 @@ def entrenar(
                     discriminacion.get("exigibles"), discriminacion.get("firmas"),
                     discriminacion.get("criterio"))
     except Exception as e:  # noqa: BLE001 — el rebuild sigue
-        logger.warning("Discriminación de firmas no disponible: %s", e)
+        logger.warning("Discriminación de firmas no disponible: %s", sin_credenciales(e))
 
     # POST: medición disciplinaria (castiga al Padre/Omega si lo real no mejora)
     sesgo_post = {}
@@ -1009,7 +1013,7 @@ def entrenar(
                 mejora[bot] = round(d["causal"] - antes, 4)
         logger.info(f"Mejora causal por bot (post - pre): {mejora}")
     except Exception as e:
-        logger.warning(f"Sesgo post-entrenamiento no disponible: {e}")
+        logger.warning(f"Sesgo post-entrenamiento no disponible: {sin_credenciales(e)}")
 
     umbral_muro = calcular_umbral_muro(db_path)
     return {"fase1": fase1, "fase1b": fase1b, "fase2": fase2, "lags": lags,
@@ -1694,7 +1698,7 @@ def _fetch_sismos_menores(anio: int, mag_min: float, mag_max: float,
             out.append((ts, lat, lon, float(mag)))
         return out
     except Exception as e:
-        logger.warning(f"Disciplina de trasfondo: fetch USGS falló: {e}")
+        logger.warning(f"Disciplina de trasfondo: fetch USGS falló: {sin_credenciales(e)}")
         return []
 
 

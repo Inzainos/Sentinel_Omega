@@ -367,7 +367,14 @@ class AlertService:
                 from sentinel_omega.infrastructure.messaging.consenso_vigilante import get_vigilante
                 vig = get_vigilante(dry_run=self.dry_run)
                 routed = vig.ingest(msg, extra=extra, conn=conn)
-                results["telegram"] = bool(routed.get("sent") or routed.get("action") == "buffered")
+                # P2 2026-11-10: `sent` y `buffered` SEPARADOS (antes
+                # `telegram` era True en ambos casos y no se distinguía un
+                # envío real de un aviso en cola). `telegram` se conserva
+                # como OR por retrocompatibilidad con llamadores que solo
+                # miran si el aviso quedó entregado o en cola.
+                results["telegram_sent"] = bool(routed.get("sent"))
+                results["telegram_buffered"] = routed.get("action") == "buffered"
+                results["telegram"] = results["telegram_sent"] or results["telegram_buffered"]
                 results["telegram_action"] = routed.get("action")  # type: ignore[assignment]
             except Exception as e:
                 from sentinel_omega.infrastructure.api.telegram import sin_token

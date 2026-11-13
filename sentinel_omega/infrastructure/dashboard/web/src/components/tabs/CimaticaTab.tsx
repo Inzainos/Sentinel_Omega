@@ -39,6 +39,11 @@ export function CimaticaTab() {
   const d = (ev.data || {}) as Record<string, any>;
 
   const clave = caData.current_clave ? String(caData.current_clave) : null;
+  // Contrato del README del dashboard: biblioteca_presente distingue tabla
+  // AUSENTE de biblioteca VACÍA (regla 3: lo no construido se ve distinto
+  // de lo construido en cero). tbl_cimatica_biblioteca nunca se ha poblado:
+  // la comparación viva corre contra tbl_cimatica_patrones (fallback).
+  const bibliotecaPresente = caData.biblioteca_presente === true;
   const bibliotecaN = caData.biblioteca_n != null ? Number(caData.biblioteca_n) : null;
   const total = d.cimatica_total != null ? Number(d.cimatica_total) : null;
   const edad = d.edad_s != null ? Number(d.edad_s) : null;
@@ -60,8 +65,18 @@ export function CimaticaTab() {
         />
         <Metrica
           etiqueta="Biblioteca de figuras"
-          valor={bibliotecaN != null ? bibliotecaN.toLocaleString("es-MX") : "—"}
-          contexto="vísperas etiquetadas comparables"
+          valor={
+            bibliotecaN != null
+              ? bibliotecaN.toLocaleString("es-MX")
+              : bibliotecaPresente
+                ? "0"
+                : "no construida"
+          }
+          contexto={
+            bibliotecaPresente
+              ? "vísperas etiquetadas comparables"
+              : "sin tabla propia — la comparación viva usa los patrones (fallback)"
+          }
           jerarquia="compacta"
         />
         <Metrica

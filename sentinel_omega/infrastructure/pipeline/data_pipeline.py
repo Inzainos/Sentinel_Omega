@@ -15,6 +15,7 @@ LOCF Protocol:
 """
 
 import logging
+import math
 import time
 from typing import Any, Dict, List, Optional
 
@@ -33,7 +34,7 @@ from sentinel_omega.infrastructure.api.gfz_kp import fetch_kp_history
 from sentinel_omega.infrastructure.api.google_trends import fetch_solar_storm_trends
 from sentinel_omega.infrastructure.api.nasa_neo import fetch_neo_hazard_summary
 from sentinel_omega.infrastructure.api.usgs import fetch_earthquakes
-from sentinel_omega.infrastructure.api.schumann import fetch_schumann_resonance
+from sentinel_omega.infrastructure.api.schumann import fetch_schumann_resonance  # noqa: F401 — retirado del ciclo (corte diario 2026-10-26); queda para tools/backs
 from sentinel_omega.infrastructure.api.geophysical import (
     fetch_lod_series,
     compute_lunar_phase_series,
@@ -55,6 +56,7 @@ from sentinel_omega.infrastructure.api.openweathermap import (
     scan_global_nodes,
     compute_pressure_gradient,
     MONITORING_STATIONS,
+    _get_api_key,
 )
 from sentinel_omega.infrastructure.api.crypto import (
     fetch_coingecko_dominance,
@@ -68,8 +70,24 @@ from sentinel_omega.infrastructure.api.bolsa import (
     fetch_sector_etfs,
     fetch_yield_spread,
 )
+from sentinel_omega.infrastructure.api._redact import sin_credenciales
 
 logger = logging.getLogger(__name__)
+
+
+def _finito_o_none(x: Any) -> Optional[float]:
+    """float finito o None: NaN/+-inf nunca entran al result ni al LOCF (T-2)."""
+    try:
+        v = float(x)
+    except (TypeError, ValueError):
+        return None
+    return v if math.isfinite(v) else None
+
+
+def _round_finito(x: Any, ndigits: int) -> Optional[float]:
+    """round(x) si x es finito, None si es NaN/+-inf/ausente (T-2)."""
+    v = _finito_o_none(x)
+    return round(v, ndigits) if v is not None else None
 
 
 def depth_km_o_null(depth: Any) -> Optional[float]:
@@ -323,16 +341,42 @@ class GeodynamicPipeline:
                     if e["magnitude"] >= 4.0 and e["timestamp"] >= _corte
                 )
 
+        # Schumann: CORTE DIARIO (2026-10-26). El espectrograma de Tomsk se
+        # descarga UNA vez al día (el launcher hace el corte al empezar el
+        # ciclo); aquí sólo se LEE el valor del día — sin red, sin las 288
+        # descargas/día por un valor que Tomsk reescribe igual cada hora.
+        # Medido antes del cambio: 212 fallos de fetch en un solo log.
+        # Sin corte aún (Tomsk caído todo el día): rasgo sin dato este
+        # ciclo — no se arrastra en silencio (regla 8).
         try:
-            sch = fetch_schumann_resonance(cleanup=True)
-            if sch is None:
-                logger.warning("Schumann fetch returned no-signal (skip cache write of 7.83/0)")
+            from sentinel_omega.infrastructure.database.ruta_db import (
+                abrir_readonly,
+            )
+            _c_sd = abrir_readonly()
+            if _c_sd is not None:
+                try:
+                    fila_sd = _c_sd.execute(
+                        "SELECT actividad FROM tbl_schumann_diario "
+                        "WHERE actividad IS NOT NULL "
+                        "AND fecha = date('now') "
+                        "ORDER BY fecha DESC LIMIT 1"
+                    ).fetchone()
+                finally:
+                    _c_sd.close()
             else:
-                schumann_hz, schumann_pct = sch
-                result["schumann_frequency"] = schumann_hz
-                result["schumann_activity"] = schumann_pct
+                fila_sd = None
+            if fila_sd is not None:
+                result["schumann_frequency"] = None
+                result["schumann_activity"] = float(fila_sd[0])
+            else:
+                logger.warning(
+                    "Schumann: sin corte diario disponible — rasgo sin "
+                    "dato este ciclo"
+                )
         except Exception as e:
-            logger.warning(f"Schumann fetch failed: {e}")
+            logger.warning(
+                f"Schumann corte diario ilegible: {sin_credenciales(e)}"
+            )
 
         lod_df = fetch_lod_series(days=90)
         if lod_df is not None and len(lod_df) > 0:
@@ -341,13 +385,19 @@ class GeodynamicPipeline:
         try:
             result["lunar_phase"] = compute_lunar_phase_series(days=30)
         except Exception as e:
-            logger.warning(f"Lunar phase computation failed: {e}")
+            logger.warning(f"Lunar phase computation failed: {sin_credenciales(e)}")
 
         electron_df = fetch_electron_flux()
         if electron_df is not None and len(electron_df) > 0:
             result["electron_flux"] = float(electron_df["flux"].iloc[-1])
 
-        neo = fetch_neo_hazard_summary()
+        # T-4 (2026-11-10): fail-soft doble (tambien en nasa_neo.py) —
+        # un fallo NEO no aborta el ciclo beta1/alfa1 entero.
+        try:
+            neo = fetch_neo_hazard_summary()
+        except Exception as e:
+            logger.warning(f"NEO fetch failed (non-blocking): {sin_credenciales(e)}")
+            neo = None
         if neo:
             result["neo_hazardous_count"] = neo["hazardous_count"]
             if neo.get("closest_hazardous_ld") is not None:
@@ -376,11 +426,26 @@ class GeodynamicPipeline:
                 flux_proxy * 0.5 + kp_now * 2.0 + wind_now * 0.01, 2
             )
         except Exception as e:
-            logger.warning(f"Synthetic TEC computation failed: {e}")
+            logger.warning(f"Synthetic TEC computation failed: {sin_credenciales(e)}")
 
         if not result:
             logger.warning("No Kp/seismic data for Beta-1 — activating LOCF")
             return self._locf_get("beta1")
+        # T2-3 (2026-11-10, P0-C / bitácora § J-2): fusión LOCF por clave.
+        # Si el fetch de Kp falló pero los demás fetches van bien, `result`
+        # llega aquí SIN `kp_series` y `_locf_set` lo sobrescribiría sin
+        # kp. Antes de persistir, se repone la clave faltante desde el
+        # LOCF (memoria o DB vía data_pipeline_locf_patch). Solo kp_series:
+        # las demás claves ausentes siguen significando "sin dato este
+        # ciclo" (regla 7/8) y NO se reponen. La guarda `is not None`
+        # evita insertar `kp_series=None` cuando el LOCF tampoco la tiene
+        # (un `setdefault(..., None)` dejaría la clave presente pero vacía).
+        if "kp_series" not in result:
+            _locf_beta1 = self._locf_get("beta1")
+            _kp_locf = _locf_beta1.get("kp_series") if _locf_beta1 else None
+            if _kp_locf is not None:
+                result["kp_series"] = _kp_locf
+                logger.info("Beta-1: kp_series repuesta desde LOCF (fetch Kp falló)")
         self._locf_set("beta1", result)
         return result
 
@@ -402,7 +467,7 @@ class GeodynamicPipeline:
                 cov = compute_temporal_coverage(bbox, days=days)
                 zone_coverages[zone] = cov
             except Exception as e:
-                logger.warning(f"Satellite coverage failed for {zone}: {e}")
+                logger.warning(f"Satellite coverage failed for {zone}: {sin_credenciales(e)}")
 
         if not zone_coverages:
             logger.warning("No satellite coverage data for Alfa-2 — activating LOCF")
@@ -427,6 +492,13 @@ class GeodynamicPipeline:
 
     def fetch_beta2_data(self) -> Dict[str, Any]:
         """Fetch atmospheric chemistry data for Beta-2 (pressure, SO2, air quality)."""
+        # T-1 parcial (2026-11-10): sin OPENWEATHERMAP_KEY no hay red OWM —
+        # LOCF directo en vez de 5 fetches condenados a fallar. La clave NO
+        # se pone aqui (D3, decision de Elan); el warning 1x lo pone el
+        # agente del launcher en openweathermap._get_api_key.
+        if not _get_api_key():
+            logger.warning("Beta-2 sin OPENWEATHERMAP_KEY — LOCF (sin intentos OWM)")
+            return self._locf_get("beta2")
         result: Dict[str, Any] = {}
 
         try:
@@ -459,7 +531,7 @@ class GeodynamicPipeline:
                     for r in readings
                 ]
         except Exception as e:
-            logger.warning(f"Atmospheric data fetch failed: {e}")
+            logger.warning(f"Atmospheric data fetch failed: {sin_credenciales(e)}")
 
         # Pronóstico 5d/3h (2026-10-19): anticipación atmosférica — misma
         # key OWM, endpoint nunca usado. Resumen por nodo primario con TTL
@@ -474,7 +546,7 @@ class GeodynamicPipeline:
             if forecast:
                 result["forecast_owm"] = forecast
         except Exception as e:
-            logger.warning(f"OWM forecast fetch failed: {e}")
+            logger.warning(f"OWM forecast fetch failed: {sin_credenciales(e)}")
 
         try:
             tlaxcala = MONITORING_STATIONS["tlaxcala"]
@@ -482,21 +554,21 @@ class GeodynamicPipeline:
             if aq:
                 result["air_quality"] = aq
         except Exception as e:
-            logger.warning(f"Air quality fetch failed: {e}")
+            logger.warning(f"Air quality fetch failed: {sin_credenciales(e)}")
 
         try:
             baseline = fetch_reference_baseline()
             if baseline:
                 result["degassing_baseline"] = baseline
         except Exception as e:
-            logger.warning(f"Reference baseline fetch failed: {e}")
+            logger.warning(f"Reference baseline fetch failed: {sin_credenciales(e)}")
 
         try:
             node_scan = scan_global_nodes()
             if node_scan:
                 result["global_node_scan"] = node_scan
         except Exception as e:
-            logger.warning(f"Global node scan failed: {e}")
+            logger.warning(f"Global node scan failed: {sin_credenciales(e)}")
 
         if not result:
             logger.warning("No atmospheric data for Beta-2 — activating LOCF")
@@ -596,15 +668,22 @@ class GeodynamicPipeline:
             enriched_data = fetch_all(days=14)
             enriched = run_composite(enriched_data, window_days=14)
 
-            result["delta_data_completeness"] = round(enriched.data_completeness, 2)
-            result["delta_composite_score"] = round(enriched.composite_score, 4)
+            # T-2 (2026-11-10): round(nan) es nan — el origen del
+            # "cross_coupling": NaN en tbl_locf_cache. Solo claves finitas.
+            result["delta_data_completeness"] = _round_finito(enriched.data_completeness, 2)
+            result["delta_composite_score"] = _round_finito(enriched.composite_score, 4)
             result["delta_regime_label"] = enriched.regime_label
             result["delta_narrative"] = enriched.narrative
-            result["delta_confidence"] = round(enriched.confidence, 4)
+            result["delta_confidence"] = _round_finito(enriched.confidence, 4)
             if enriched.data_completeness and enriched.data_completeness > 0 and enriched.cross:
-                result["cross_coupling"] = round(enriched.cross.composite_coupling, 4)
-                result["geo_coupling"] = round(enriched.cross.geomagnetic_coupling, 4)
-                result["schumann_coupling"] = round(enriched.cross.schumann_coupling, 4)
+                for _k, _v in (
+                    ("cross_coupling", enriched.cross.composite_coupling),
+                    ("geo_coupling", enriched.cross.geomagnetic_coupling),
+                    ("schumann_coupling", enriched.cross.schumann_coupling),
+                ):
+                    _rv = _round_finito(_v, 4)
+                    if _rv is not None:
+                        result[_k] = _rv
             else:
                 logger.warning(
                     "Delta enriched completeness=%.2f — omitting coupling keys (no zero write)",
@@ -620,7 +699,9 @@ class GeodynamicPipeline:
                 if getattr(enriched_data.schumann, "es_locf", False):
                     result["geo_schumann_deviation"] = None
                 else:
-                    result["geo_schumann_deviation"] = geo.schumann_freq_deviation
+                    result["geo_schumann_deviation"] = _finito_o_none(
+                        geo.schumann_freq_deviation
+                    )
 
             logger.info(
                 "Delta enriquecido: composite=%s, cross_coupling=%s, regime=%s, completeness=%s",
@@ -690,6 +771,8 @@ class GeodynamicPipeline:
                 completeness = float(completeness or 0.0)
             except (TypeError, ValueError):
                 completeness = 0.0
+            if not math.isfinite(completeness):
+                completeness = 0.0
 
             couplings = [
                 result.get("cross_coupling"),
@@ -697,10 +780,13 @@ class GeodynamicPipeline:
                 result.get("schumann_coupling"),
             ]
             def _f(x):
+                # T-2 (2026-11-10): float(nan) es nan y `abs(nan) < 1e-12`
+                # es False — el NaN pasaba el filtro anti-basura.
                 try:
-                    return float(x)
+                    _v = float(x)
                 except (TypeError, ValueError):
                     return None
+                return _v if math.isfinite(_v) else None
             coup_vals = [_f(c) for c in couplings]
             all_zeroish = all(v is None or abs(v) < 1e-12 for v in coup_vals)
             if completeness <= 0.0 or (all_zeroish and completeness < 0.5):
@@ -712,7 +798,7 @@ class GeodynamicPipeline:
                 return
 
             regime = result.get("delta_regime_label") or ""
-            conf = float(result.get("delta_confidence") or 0.0)
+            conf = _f(result.get("delta_confidence")) or 0.0
             if completeness < 0.5 and regime == "EQUILIBRIUM":
                 regime = "INCOMPLETE"
                 conf = min(conf, 0.2)
@@ -725,17 +811,17 @@ class GeodynamicPipeline:
                 "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
                 (
                     ts,
-                    result.get("cross_coupling"),
-                    result.get("geo_coupling"),
-                    result.get("schumann_coupling"),
+                    _f(result.get("cross_coupling")),
+                    _f(result.get("geo_coupling")),
+                    _f(result.get("schumann_coupling")),
                     None if result.get("fear_greed") is None else abs(float(result["fear_greed"]) - 50) / 50.0,
-                    result.get("delta_composite_score") or 0.0,
+                    _f(result.get("delta_composite_score")) or 0.0,
                     regime,
                     conf,
                     completeness,
-                    result.get("geo_kp_max_3d"),
+                    _f(result.get("geo_kp_max_3d")),
                     int(result.get("geo_storm_active") or 0),
-                    result.get("geo_schumann_deviation"),
+                    _f(result.get("geo_schumann_deviation")),
                 ),
             )
             conn.commit()

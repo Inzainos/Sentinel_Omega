@@ -82,8 +82,10 @@ def _stop_current(force: bool = False) -> bool:
 
 
 def _relaunch(args):
+    venv_python = Path(__file__).parent.parent / ".venv" / "bin" / "python"
     launcher = Path(__file__).parent / "launcher.py"
-    cmd = [sys.executable, str(launcher)]
+    python_bin = str(venv_python if venv_python.exists() else sys.executable)
+    cmd = [python_bin, str(launcher)]
 
     if args.dashboard:
         cmd.append("--dashboard")

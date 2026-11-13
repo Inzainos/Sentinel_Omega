@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import base64
 import logging
+import os
 import sqlite3
 import zlib
 from pathlib import Path
@@ -163,21 +164,80 @@ def conexion_de_lote(db_path: str) -> sqlite3.Connection:
     return conn
 
 
+# D3 / G-2 (P1, 2026-11-10): init_database() re-ejecutaba TODO el DDL +
+# migraciones + DROP/CREATE VIEW en CADA conexión, y get_connection()
+# ignoraba SENTINEL_DB. Este envoltorio es el init_database que ven los
+# importadores (launcher, repositorio): si la DB ya está en versión 11,
+# NO toca DDL/vistas/migraciones y devuelve una conexión con los PRAGMA
+# de runtime. Si no está en 11 (o no existe), delega al init expandido,
+# que crea/migra como antes. OJO: un cambio de esquema futuro DEBE subir
+# SCHEMA_VERSION, o este atajo lo saltará.
+def _version_esquema(path: Path) -> Optional[int]:
+    """MAX(version) de TBL_SCHEMA_VERSION sin crear ni escribir nada.
+
+    Devuelve None si el archivo no existe o la tabla no está (DB nueva o
+    anterior a v11): en esos casos el init completo debe correr.
+    """
+    if not path.exists():
+        return None
+    try:
+        conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=5)
+        try:
+            fila = conn.execute(
+                "SELECT MAX(version) FROM TBL_SCHEMA_VERSION"
+            ).fetchone()
+        finally:
+            conn.close()
+    except sqlite3.Error:
+        return None
+    if not fila or fila[0] is None:
+        return None
+    return int(fila[0])
+
+
+def init_database(db_path: str) -> sqlite3.Connection:
+    """Inicializa la DB; no-op de DDL si ya está en SCHEMA_VERSION.
+
+    Reemplaza al init_database() expandido para quien importa este módulo
+    (el expandido sigue en _init_database_expanded para el camino de
+    creación/migración).
+    """
+    path = Path(db_path)
+    version = _version_esquema(path)
+    if version is not None and version >= int(globals().get("SCHEMA_VERSION", 11)):
+        logger.info("DB %s ya en esquema v%s: sin DDL", db_path, version)
+        conn = sqlite3.connect(str(path), timeout=ESPERA_CANDADO_S)
+        for pragma in PRAGMAS_RUNTIME:
+            try:
+                conn.execute(pragma)
+            except sqlite3.Error as exc:  # noqa: BLE001 — el lote corre igual
+                logger.warning("No se pudo aplicar %s: %s", pragma, exc)
+        try:
+            conn.execute("PRAGMA foreign_keys=ON")
+        except sqlite3.Error as exc:  # noqa: BLE001
+            logger.warning("No se pudo aplicar foreign_keys: %s", exc)
+        return _con_espera(conn)
+    if not callable(_init_database_expanded):
+        raise RuntimeError("init_database no disponible tras expandir schema")
+    init_fn = cast(Callable[[str], sqlite3.Connection], _init_database_expanded)
+    return _con_espera(init_fn(db_path))
+
+
 def get_connection(db_path: Optional[str] = None) -> sqlite3.Connection:
     """Get DB connection with lock-tolerant fallback.
 
     1) Prefer init_database() to keep forward-only migrations.
     2) If DB is temporarily write-locked, open direct connection and continue.
+
+    D3 (P1, 2026-11-10): SENTINEL_DB gana sobre el default del checkout
+    (antes se ignoraba y la suite escribía la DB de producción).
     """
     if db_path is None:
-        db_path = str(
+        db_path = os.environ.get("SENTINEL_DB") or str(
             Path(__file__).parent.parent.parent / "data" / "SENTINEL_OMEGA_PRO.db"
         )
     try:
-        if not callable(_init_database_expanded):
-            raise RuntimeError("init_database no disponible tras expandir schema")
-        init_fn = cast(Callable[[str], sqlite3.Connection], _init_database_expanded)
-        return _con_espera(init_fn(db_path))
+        return init_database(db_path)
     except sqlite3.OperationalError as exc:
         if "locked" not in str(exc).lower():
             raise

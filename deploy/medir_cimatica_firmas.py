@@ -34,7 +34,7 @@ Limitaciones honestas (v0):
   - Interpolación lineal sobre los huecos internos de la fase — suaviza;
     documentado, como la rejilla de peras de la tela v1.
 
-Uso (desde /home/deamon/workspaces, venv del workspace):
+Uso (desde /home/deamon/Sentinel_Omega, venv del workspace):
   .venv/bin/python deploy/medir_cimatica_firmas.py [--n-muestra N] [--sin-figuras]
 """
 from __future__ import annotations

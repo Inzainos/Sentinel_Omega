@@ -9,6 +9,7 @@ from typing import Optional
 import pandas as pd
 from sentinel_omega.infrastructure.api._http import get_session
 from sentinel_omega.infrastructure.api.circuit_breaker import circuit
+from sentinel_omega.infrastructure.api._redact import sin_credenciales
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +74,7 @@ def fetch_earthquakes(
         logger.info(f"USGS: {len(df)} earthquakes (M>={min_magnitude}, {days}d)")
         return df.sort_values("time")
     except Exception as e:
-        logger.error(f"USGS fetch failed: {e}")
+        logger.error(f"USGS fetch failed: {sin_credenciales(e)}")
     return None
 
 

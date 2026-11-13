@@ -7,11 +7,11 @@ After=network-online.target
 Type=oneshot
 # El script solo sale 0 cuando el tamaño completo está verificado Y el zip es
 # legible; si se agota, relanza. Curl reanuda por Range (HTTP 206 verificado).
-ExecStart=/bin/bash /home/deamon/workspaces/deploy/bajar_eskdalemuir_bgs.sh
+ExecStart=/bin/bash /home/deamon/Sentinel_Omega/deploy/bajar_eskdalemuir_bgs.sh
 Restart=on-failure
 RestartSec=60
-StandardOutput=append:/home/deamon/workspaces/sentinel_omega/logs/eskdalemuir_descarga.log
-StandardError=append:/home/deamon/workspaces/sentinel_omega/logs/eskdalemuir_descarga.log
+StandardOutput=append:/home/deamon/Sentinel_Omega/sentinel_omega/logs/eskdalemuir_descarga.log
+StandardError=append:/home/deamon/Sentinel_Omega/sentinel_omega/logs/eskdalemuir_descarga.log
 
 [Install]
 WantedBy=default.target

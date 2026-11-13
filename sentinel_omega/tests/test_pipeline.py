@@ -2,6 +2,7 @@
 
 import sqlite3
 import tempfile
+from datetime import datetime, timezone
 from unittest.mock import patch, MagicMock
 
 import numpy as np
@@ -25,6 +26,33 @@ def _stub_red_no_mockeada():
         return_value={"hazardous_count": 0, "closest_hazardous_ld": None},
     ):
         yield
+
+
+@pytest.fixture
+def test_db_schumann(monkeypatch, tmp_path):
+    """Create test database with tbl_schumann_diario populated."""
+    db_path = tmp_path / "test.db"
+    conn = sqlite3.connect(str(db_path))
+    conn.execute("""
+        CREATE TABLE tbl_schumann_diario (
+            fecha TEXT PRIMARY KEY,
+            actividad REAL,
+            fuente TEXT,
+            tomado_en TEXT DEFAULT (datetime('now'))
+        )
+    """)
+    # Insert test data for today
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    conn.execute(
+        "INSERT INTO tbl_schumann_diario (fecha, actividad, fuente) VALUES (?, ?, ?)",
+        (today, 3.5, "test_fallback")
+    )
+    conn.commit()
+    conn.close()
+    
+    # Set SENTINEL_DB to use this test database
+    monkeypatch.setenv("SENTINEL_DB", str(db_path))
+    yield db_path
 
 
 # ── Helpers ────────────────────────────────────────────────────────
@@ -103,15 +131,35 @@ class TestGeodynamicPipeline:
         df = data["omni_dataframe"]
         assert "bz_gsm" in df.columns
 
+    # Schumann YA NO se mockea con un fetcher: el fetcher
+    # `fetch_schumann_resonance` se retiró del ciclo el 2026-10-26 (corte
+    # diario en `tbl_schumann_diario`); el test lo cubre con la fixture
+    # `test_db_schumann` (SENTINEL_DB a una DB temporal con el corte de
+    # hoy) y afirma `schumann_frequency is None` / actividad 3.5.
+    # Los otros dos fetchers que `fetch_beta1_data` sigue llamando por
+    # red — `fetch_electron_flux` (sin try/except en el pipeline) y
+    # `fetch_goes_xray` (TEC sintético) — SÍ se mockean aquí: los tests
+    # no deben tocar la red (regla del fixture `_stub_red_no_mockeada`
+    # de este archivo) y sin mock el test depende de NOAA para pasar.
+    @patch("sentinel_omega.infrastructure.pipeline.data_pipeline.fetch_goes_xray")
+    @patch("sentinel_omega.infrastructure.pipeline.data_pipeline.fetch_electron_flux")
     @patch("sentinel_omega.infrastructure.pipeline.data_pipeline.compute_lunar_phase_series")
     @patch("sentinel_omega.infrastructure.pipeline.data_pipeline.fetch_lod_series")
-    @patch("sentinel_omega.infrastructure.pipeline.data_pipeline.fetch_schumann_resonance")
     @patch("sentinel_omega.infrastructure.pipeline.data_pipeline.fetch_earthquakes")
     @patch("sentinel_omega.infrastructure.pipeline.data_pipeline.fetch_kp_index")
-    def test_beta1_data(self, mock_kp, mock_eq, mock_schumann, mock_lod, mock_lunar):
+    def test_beta1_data(self, mock_kp, mock_eq, mock_lod, mock_lunar,
+                        mock_electron, mock_xray, test_db_schumann):
         mock_kp.return_value = _mock_kp_df()
         mock_eq.return_value = _mock_eq_df()
-        mock_schumann.return_value = (8.12, 3.5)
+        mock_electron.return_value = pd.DataFrame({
+            "time_tag": pd.date_range("2024-01-01", periods=10, freq="6h"),
+            "flux": np.linspace(100.0, 190.0, 10),
+        })
+        mock_xray.return_value = pd.DataFrame({
+            "time_tag": pd.date_range("2024-01-01", periods=10, freq="1h"),
+            "flux": [1e-6, 2e-6] * 5,
+            "energy": ["0.1-0.8nm"] * 10,
+        })
         mock_lod.return_value = pd.DataFrame({
             "date": pd.date_range("2024-01-01", periods=90, freq="1D"),
             "lod_ms": np.random.uniform(-0.5, 1.5, 90),
@@ -123,8 +171,10 @@ class TestGeodynamicPipeline:
         assert "kp_series" in data
         assert len(data["kp_series"]) == 100
         assert "seismic_magnitudes" in data
-        assert data["schumann_frequency"] == 8.12
+        assert data["schumann_frequency"] is None
         assert data["schumann_activity"] == 3.5
+        assert data["electron_flux"] == pytest.approx(190.0)
+        assert "tec_estimated" in data
         assert "lod_ms" in data
         assert len(data["lod_ms"]) == 90
         assert "lunar_phase" in data
@@ -132,7 +182,13 @@ class TestGeodynamicPipeline:
 
     @patch("sentinel_omega.infrastructure.pipeline.data_pipeline.fetch_air_quality")
     @patch("sentinel_omega.infrastructure.pipeline.data_pipeline.fetch_monitoring_network")
-    def test_beta2_data(self, mock_owm, mock_aq):
+    def test_beta2_data(self, mock_owm, mock_aq, monkeypatch):
+        # T-1 parcial (tuning 2026-11-10): sin OPENWEATHERMAP_KEY el
+        # pipeline hace LOCF directo y devuelve {} aunque los fetchers
+        # estén mockeados. La clave dummy solo desbloquea esa guarda en
+        # el test (D3: la clave real NO se pone en ningún lado); no toca
+        # el entorno real (monkeypatch la retira al terminar el test).
+        monkeypatch.setenv("OPENWEATHERMAP_KEY", "dummy")
         from sentinel_omega.infrastructure.api.openweathermap import AtmosphericReading
         mock_owm.return_value = [
             AtmosphericReading("tlaxcala", 19.31, -98.24, 1005.0, 18.0, 65.0, 8000, 3.2, 180, 40),
@@ -452,15 +508,19 @@ class TestGeophysicalConnector:
     def test_fetch_lod_series(self, mock_get_session):
         from sentinel_omega.infrastructure.api.geophysical import fetch_lod_series
 
-        csv_lines = ["MJD;LOD"]
-        for i in range(30):
+        # Formato ancho fijo de USNO ser7/readme.finals: MJD cols 8-15,
+        # LOD cols 80-86 (ms). Una línea final con LOD vacío (predicción
+        # lejana) debe saltarse, no contarse.
+        fw_lines = []
+        for i in range(31):
             mjd = 60310.0 + i
             lod = 0.5 + i * 0.01
-            csv_lines.append(f"{mjd};{lod}")
+            fw_lines.append(f"{'':7}{f'{mjd:.2f}':<8}{'':64}{lod:>7}")
+        fw_lines.append(f"{'':7}{f'{60350.0:.2f}':<8}{'':64}{'':7}")  # LOD vacío
 
         mock_resp = MagicMock()
         mock_resp.status_code = 200
-        mock_resp.text = "\n".join(csv_lines)
+        mock_resp.text = "\n".join(fw_lines)
         mock_resp.raise_for_status = MagicMock()
         mock_get_session.return_value.get.return_value = mock_resp
 
@@ -468,7 +528,9 @@ class TestGeophysicalConnector:
         assert df is not None
         assert "lod_ms" in df.columns
         assert "date" in df.columns
+        # 31 líneas con LOD + 1 vacía, y days=30 recorta a las últimas 30.
         assert len(df) == 30
+        assert df["lod_ms"].iloc[-1] == pytest.approx(0.5 + 30 * 0.01)
 
     @patch("sentinel_omega.infrastructure.api.geophysical.get_session")
     def test_fetch_lod_failure(self, mock_get_session):

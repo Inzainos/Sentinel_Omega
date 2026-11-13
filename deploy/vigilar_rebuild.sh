@@ -19,7 +19,7 @@
 #      rebuild_completo.py es '[X] <paso> FALLO:'.
 
 set -u
-R=/home/deamon/workspaces
+R=/home/deamon/Sentinel_Omega
 
 rebuilds_activos() {
     # Unidades de rebuild REALES, activas o arrancando. El propio vigía

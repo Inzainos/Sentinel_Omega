@@ -14,22 +14,29 @@ from typing import Dict, Optional
 import numpy as np
 import pandas as pd
 from sentinel_omega.infrastructure.api._http import get_session
+from sentinel_omega.infrastructure.api._redact import sin_credenciales
+from sentinel_omega.infrastructure.api.circuit_breaker import circuit
 
 logger = logging.getLogger(__name__)
 
-IERS_FINALS_URL = (
-    "https://datacenter.iers.org/data/csv/finals2000A.daily.csv"
-)
-# El archivo .daily solo trae ~90 días. El .all cubre 1973→2027 (20.041
-# filas) con el MISMO formato, y es el que hace falta para rellenar el LOD
+IERS_FINALS_URL = "https://maia.usno.navy.mil/ser7/finals.daily"
+# datacenter.iers.org (BKG) caído para clientes externos desde el 2026-10-24:
+# el WAF responde 400 a TODO (incluso a la raíz, con User-Agent de navegador).
+# El Bulletin A vive en USNO/Maia con el mismo dato y formato ancho fijo.
+#
+# finals.daily trae ~180 días; finals.all cubre 1973→hoy+1 año de predicción
+# (LOD vacío en la cola de predicción lejana --- "NOT ALWAYS FILLED" en el
+# readme --- y el parser lo salta). Es el que hace falta para rellenar el LOD
 # histórico de tbl_astronomia_cinematica, que estaba en 0.0 en sus 280.352
 # filas.
-IERS_FINALS_ALL_URL = (
-    "https://datacenter.iers.org/data/csv/finals2000A.all.csv"
-)
+#
+# Formato ancho fijo (ser7/readme.finals): MJD en cols 8-15, LOD en cols
+# 80-86 en ms. Verificado contra el archivo real el 2026-10-25.
+IERS_FINALS_ALL_URL = "https://maia.usno.navy.mil/ser7/finals.all"
 TIMEOUT = 20
 
 
+@circuit("iers")
 def fetch_lod_series(days: int = 90, historico: bool = False) -> Optional[pd.DataFrame]:
     """
     Fetch Length-of-Day excess (LOD) from IERS Bulletin A finals data.
@@ -40,39 +47,18 @@ def fetch_lod_series(days: int = 90, historico: bool = False) -> Optional[pd.Dat
         resp = get_session().get(url, timeout=TIMEOUT * (3 if historico else 1))
         resp.raise_for_status()
 
-        lines = resp.text.strip().split("\n")
-        if len(lines) < 2:
-            logger.warning("IERS response too short")
-            return None
-
-        header = lines[0].split(";")
-        col_map = {h.strip(): i for i, h in enumerate(header)}
-
-        mjd_col = None
-        lod_col = None
-        for key in col_map:
-            if "MJD" in key.upper():
-                mjd_col = col_map[key]
-            if "LOD" in key.upper() and "SIGMA" not in key.upper():
-                lod_col = col_map[key]
-
-        if mjd_col is None or lod_col is None:
-            logger.warning(f"IERS columns not found: {list(col_map.keys())}")
-            return None
-
+        # Ancho fijo (ser7/readme.finals): MJD cols 8-15, LOD cols 80-86 (ms).
+        # Las líneas de predicción lejana traen LOD vacío: se saltan, no se
+        # inventan (regla 2).
         records = []
-        for line in lines[1:]:
-            parts = line.split(";")
-            if len(parts) <= max(mjd_col, lod_col):
+        for line in resp.text.strip().split("\n"):
+            mjd_str = line[7:15].strip()
+            lod_str = line[79:86].strip()
+            if not mjd_str or not lod_str:
                 continue
             try:
-                mjd = float(parts[mjd_col].strip())
-                lod_str = parts[lod_col].strip()
-                if not lod_str:
-                    continue
-                lod = float(lod_str)
-                records.append({"mjd": mjd, "lod_ms": lod})
-            except (ValueError, IndexError):
+                records.append({"mjd": float(mjd_str), "lod_ms": float(lod_str)})
+            except ValueError:
                 continue
 
         if not records:
@@ -86,7 +72,7 @@ def fetch_lod_series(days: int = 90, historico: bool = False) -> Optional[pd.Dat
         return df[["date", "lod_ms"]]
 
     except Exception as e:
-        logger.error(f"IERS LOD fetch failed: {e}")
+        logger.error(f"IERS LOD fetch failed: {sin_credenciales(e)}")
         return None
 
 

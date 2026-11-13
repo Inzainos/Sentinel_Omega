@@ -25,7 +25,7 @@ import random
 import statistics as st
 import sys
 
-sys.path.insert(0, "/home/deamon/workspaces")
+sys.path.insert(0, "/home/deamon/Sentinel_Omega")
 
 from sentinel_omega.core.firmas.signature_engine import (  # noqa: E402
     SIMILARITY_ALERT, extraer_features_ventana, similitud,
@@ -35,7 +35,7 @@ from sentinel_omega.infrastructure.pipeline.mantenimiento import (  # noqa: E402
     conexion_de_lote,
 )
 
-DB = "/home/deamon/workspaces/sentinel_omega/data/SENTINEL_OMEGA_PRO.db"
+DB = "/home/deamon/Sentinel_Omega/sentinel_omega/data/SENTINEL_OMEGA_PRO.db"
 HORIZONTE_H = 190
 N_VENT = 250
 N_FIRMAS = 120

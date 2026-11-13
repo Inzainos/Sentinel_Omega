@@ -29,7 +29,7 @@ import sys
 
 import pandas as pd
 
-sys.path.insert(0, "/home/deamon/workspaces")
+sys.path.insert(0, "/home/deamon/Sentinel_Omega")
 from sentinel_omega.infrastructure.pipeline.backcast import (  # noqa: E402
     LOCF_MAX_HORAS,
     extraer_nasa_omni_real,

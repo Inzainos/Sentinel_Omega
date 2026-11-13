@@ -1,9 +1,12 @@
 [Unit]
 Description=Auto-fix: detecta issues y (v2) dispara el fix via Concilio
 # v1: solo detecta y escribe estado. v2: añade --fix cuando el operador dé el GO.
+# Cadencia 4 h con SUBSET (muro + humo DB + aislamiento); la suite completa
+# corre 1x/día con sentinel-omega-autofix-full.timer (03:30).
 
 [Service]
 Type=oneshot
-ExecStart=/home/deamon/workspaces/.venv/bin/python /home/deamon/workspaces/deploy/auto_fix.py --detect
-StandardOutput=append:/home/deamon/workspaces/sentinel_omega/logs/auto_fix.log
-StandardError=append:/home/deamon/workspaces/sentinel_omega/logs/auto_fix.log
+ExecStart=/home/deamon/.venv_unified/bin/python /home/deamon/Sentinel_Omega/deploy/auto_fix.py --detect --subset
+TimeoutStartSec=infinity
+StandardOutput=append:/home/deamon/Sentinel_Omega/sentinel_omega/logs/auto_fix.log
+StandardError=append:/home/deamon/Sentinel_Omega/sentinel_omega/logs/auto_fix.log

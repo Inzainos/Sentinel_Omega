@@ -45,7 +45,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
-sys.path.insert(0, "/home/deamon/workspaces")
+sys.path.insert(0, "/home/deamon/Sentinel_Omega")
 
 from sentinel_omega.infrastructure.api.schumann_granada import (  # noqa: E402
     ERROR_AJUSTE_VECES_MEDIANA,
@@ -478,6 +478,13 @@ def procesar_parcial(zip_local: Path, db_out: Path,
     El directorio central se trae por Range (cacheado): no requiere que el
     zip esté terminado.
     """
+    # P1 (2026-11-10): guarda de descarga incompleta. El zip 2025.zip no
+    # existe (la descarga está al 7%, abandonada; D10 decide si se reanuda).
+    # Antes: `zip_local.stat()` (:489) levantaba FileNotFoundError y el
+    # servicio fallaba cada 2 h. Ahora: salir 0, nada que procesar.
+    if not zip_local.exists():
+        print(f"descarga incompleta: {zip_local} no existe — nada que procesar")
+        return 0
     import re
     import tempfile
     entradas = entradas_remotas(zip_local)

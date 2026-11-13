@@ -43,6 +43,11 @@ class SystemStatus:
     is_online: bool = False
     last_consensus: Optional[ConsensusResult] = None
     last_precursor_risk: Optional[PrecursorRisk] = None
+    # A4 (tuning P0-C, 2026-11-10): ciclo que produjo `last_precursor_risk`.
+    # El launcher solo persiste el risk si este sello == ciclo actual; sin
+    # él, un ciclo fallido re-persistía el risk rancio del ciclo anterior
+    # (133 "Cycle failed" medidos: 80×300 s + 53×420 s, verificación p. 2).
+    last_risk_cycle: int = 0
     last_muro: Optional[Any] = None
     active_precursors: List[str] = field(default_factory=list)
     uptime_s: float = 0.0
@@ -143,6 +148,13 @@ class SentinelOrchestrator:
 
     def run_cycle(self) -> Dict[str, ConsensusResult]:
         self._status.cycle_count += 1
+        # H-5 (tuning P0-C, 2026-11-10): reset por ciclo. Antes
+        # `active_precursors` solo se asignaba `if detections:` en
+        # `_analyze_results`, así que un ciclo sin detecciones conservaba los
+        # precursores del ciclo anterior y `TBL_CICLOS.precursor_types`
+        # mentía por ciclo. El reset va aquí (no solo en `_analyze_results`)
+        # para que también se limpie cuando el runner falla y no hay `geo`.
+        self._status.active_precursors = []
         logger.info(f"--- Cycle #{self._status.cycle_count} ---")
 
         results = {}
@@ -180,12 +192,22 @@ class SentinelOrchestrator:
         risk = geo.precursor_risk
         if risk:
             self._status.last_precursor_risk = risk
+            # A4 (P0-C): sellar el ciclo que produjo este risk (ver
+            # `SystemStatus.last_risk_cycle`).
+            self._status.last_risk_cycle = self._status.cycle_count
 
         detections = getattr(geo, "precursor_detections", None) or []
+        # H-5 (P0-C): asignación incondicional — el reset ya se hizo en
+        # `run_cycle()`; aquí se reconstruye con las detecciones DE ESTE
+        # ciclo (lista vacía si no hay ninguna). NOTA: los
+        # `TBL_CICLOS.precursor_types` guardados ANTES de este fix no son
+        # fiables por ciclo (arrastraban el ciclo anterior); para el
+        # histórico por ciclo usar `TBL_MURO_EVENTOS.active_types_json` /
+        # `TBL_DETECCIONES`.
+        self._status.active_precursors = [
+            getattr(d.tipo, "value", str(d.tipo)) for d in detections
+        ]
         if detections:
-            self._status.active_precursors = [
-                getattr(d.tipo, "value", str(d.tipo)) for d in detections
-            ]
             for detection in detections:
                 if getattr(detection, "confidence", 0) >= 0.5:  # ampliado 0.5
                     details = ", ".join(

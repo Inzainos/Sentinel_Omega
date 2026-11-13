@@ -32,8 +32,10 @@ export function HeatmapChart({
   horasEje = 24,
   alto = 160,
 }: HeatmapChartProps) {
-  const ahora = Math.max(...datos.map((d) => d.ts), Date.now() / 1000);
-  const desde = ahora - horasVentana * 3600;
+  // Use max timestamp from data + 1 hour buffer instead of Date.now() to avoid impure function in render
+  const maxTs = Math.max(...datos.map((d) => d.ts), 0);
+  const ahoraRef = maxTs > 0 ? maxTs + 3600 : 0;
+  const desde = ahoraRef - horasVentana * 3600;
 
   // Agrupar por día y hora
   const grilla: Record<string, number> = {};

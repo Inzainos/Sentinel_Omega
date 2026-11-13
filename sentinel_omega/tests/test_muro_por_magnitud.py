@@ -1,4 +1,7 @@
-"""El muro de 5 se entrena aparte para cada magnitud, senal por senal.
+"""El muro de 4 se entrena aparte para cada magnitud, senal por senal.
+
+D11 (2026-11-12): el muro FINANCIERO/SOCIAL se retiró — 0 activaciones en
+16.031 eventos. El denominador es 4; el umbral de breach sigue en 3 absoluto.
 
 Una senal entra a una magnitud solo si la separa de las otras.
 Encendida para todas, no cuenta para esa clase y no se borra.
@@ -56,7 +59,7 @@ def test_encendida_para_todas_no_cuenta_y_puede_servir_a_otra():
     assert muro["SISMO_M5"]["senales"] == (WALL_SOLAR,)
     assert WALL_GEOFISICO in WALL_MEMBERS
     assert WALL_SOLAR in WALL_MEMBERS
-    assert len(WALL_MEMBERS) == 5
+    assert len(WALL_MEMBERS) == 4  # D11 (2026-11-12): retirado el financiero
 
 
 def test_geofisico_entra_si_separa_y_no_entra_si_no():
@@ -82,7 +85,7 @@ def test_el_2_5_no_abre_clase_ni_borra_senales():
     muro = entrenar_umbral_por_magnitud(filas)
     assert all(v["umbral"] is None for v in muro.values())
     assert "SISMO_M2_obs" not in muro
-    assert len(WALL_MEMBERS) == 5
+    assert len(WALL_MEMBERS) == 4  # D11 (2026-11-12): retirado el financiero
     assert MuroCincoEventos().min_walls_for_breach == 3
 
 

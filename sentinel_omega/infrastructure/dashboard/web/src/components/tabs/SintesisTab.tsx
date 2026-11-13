@@ -116,10 +116,10 @@ export function SintesisTab() {
           <div className="flex flex-col gap-3">
             <div className="flex items-baseline gap-2">
               <span className="etiqueta">Fantasma</span>
-              <span className="mono texto-principal fuente-negrita text-xl">
+              <span className="mono text-foreground font-bold text-xl">
                 <Cifra valor={fantasma} digits={2} />
               </span>
-              <span className="mono texto-micro fuente-negrita" style={{ color: colorNivel(nivel) }}>
+              <span className="mono texto-micro font-bold" style={{ color: colorNivel(nivel) }}>
                 {accionNivel(nivel)}
               </span>
               {d.goes_clase && (
@@ -181,7 +181,7 @@ export function SintesisTab() {
         <div className="grid gap-4 md:grid-cols-2">
           <div className="flex items-baseline gap-2">
             <span className="etiqueta">Tono</span>
-            <span className="mono texto-principal fuente-negrita text-xl">{tono.tono ?? "—"}</span>
+            <span className="mono text-foreground font-bold text-xl">{tono.tono ?? "—"}</span>
           </div>
           <div className="grid grid-cols-3 gap-3">
             {Object.entries(tono.dist ?? {}).map(([k, v]) => (
@@ -296,7 +296,7 @@ export function SintesisTab() {
                 const g = Number(r.ganancia_sobre_nulo);
                 return (
                   <span
-                    className="mono texto-micro fuente-negrita"
+                    className="mono texto-micro font-bold"
                     style={{ color: g > 0 ? "var(--color-calma)" : "var(--color-critico)" }}
                   >
                     {g >= 0 ? "+" : ""}

@@ -4,7 +4,8 @@ Google Trends connector — collective attention on solar storms.
 Public search interest is treated as a *collective sensor*: when a geomagnetic
 storm lights up auroras, public search for "aurora" / "solar storm" spikes. This
 connector fetches the daily interest series for a fixed solar-storm vocabulary so
-Júpiter can correlate it against NOAA space-weather indices and Schumann.
+the atención pipeline (delta) can correlate it against NOAA space-weather
+indices and Schumann.
 
 Scope: SOLAR STORMS ONLY (per project scope). No other event types here.
 
@@ -17,8 +18,19 @@ import logging
 from typing import List, Optional
 
 import pandas as pd
+from sentinel_omega.infrastructure.api._redact import sin_credenciales
+from sentinel_omega.infrastructure.api.circuit_breaker import get_breaker
 
 logger = logging.getLogger(__name__)
+
+# Breaker manual (P2 2026-11-10), NO `@circuit`: este fetcher degrada a None
+# tragándose la excepción, y el decorador solo registra el fallo cuando la
+# excepción PROPAGA — con `return None` el wrapper registraría éxito y el
+# breaker no se abriría jamás (el 400 condenado seguiría 288 veces/día).
+# La gestión manual conserva el contrato (None ante fallo) y sí abre el
+# breaker tras 5 fallos seguidos: mientras esté OPEN no se pega a Google y
+# `data_pipeline` cae directo al fallback wiki.
+_TRENDS_BREAKER = get_breaker("trends")
 
 # Fixed solar-storm vocabulary (English; Trends interest is worldwide by default).
 # Max 5 terms per Google Trends payload.
@@ -67,14 +79,18 @@ def fetch_solar_storm_trends(
     unavailable or Google rate-limits the request.
     """
     terms = terms or terms_for_geo(geo)
+    if not _TRENDS_BREAKER.allow():
+        logger.warning("Google Trends: breaker OPEN — sin intento a Google")
+        return None
     try:
         from pytrends.request import TrendReq
 
-        pytrends = TrendReq(hl="en-US", tz=0)
+        pytrends = TrendReq(hl="en-US", tz=0, timeout=15)
         pytrends.build_payload(kw_list=terms[:5], timeframe=timeframe, geo=geo)
         df = pytrends.interest_over_time()
         if df is None or df.empty:
             logger.warning("Google Trends returned no data")
+            _TRENDS_BREAKER.record_failure()
             return None
 
         if "isPartial" in df.columns:
@@ -86,10 +102,12 @@ def fetch_solar_storm_trends(
         logger.info(
             f"Google Trends: {len(df)} daily points for {len(term_cols)} solar terms"
         )
+        _TRENDS_BREAKER.record_success()
         return df
     except ImportError:
         logger.error("pytrends not installed — Google Trends unavailable")
         return None
     except Exception as e:  # noqa: BLE001 — rate limits etc. must degrade, not crash
-        logger.error(f"Google Trends fetch failed: {e}")
+        _TRENDS_BREAKER.record_failure()
+        logger.error(f"Google Trends fetch failed: {sin_credenciales(e)}")
         return None

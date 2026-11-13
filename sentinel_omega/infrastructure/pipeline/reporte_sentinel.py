@@ -23,6 +23,7 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from sentinel_omega.infrastructure.api._redact import sin_credenciales
 
 logger = logging.getLogger(__name__)
 
@@ -659,7 +660,7 @@ def reporte_general(db_path: str) -> Dict:
         data["salud_sistema"] = {"version": version, "asertividad_viva": asertividad_viva,
                                   "deltas": deltas}
     except Exception as e:
-        logger.warning(f"No se pudo actualizar tbl_salud_sistema: {e}")
+        logger.warning(f"No se pudo actualizar tbl_salud_sistema: {sin_credenciales(e)}")
 
     conn.close()
     print("\n".join(lines))

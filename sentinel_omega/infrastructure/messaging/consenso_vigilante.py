@@ -66,10 +66,22 @@ IMMEDIATE_COOLDOWN_S = int(os.environ.get("TELEGRAM_COOLDOWN_S", "1800"))
 # candado. `data/` está en `.gitignore`, así que se crea al vuelo (regla 3).
 DIGEST_STATE_FILE = "estado_digesto.json"
 
+# P2 2026-11-10: el cooldown de inmediatos también sobrevive al proceso
+# (antes `_immediate_last` moría con el reinicio y un CRITICO repetido
+# volvía a paginar). Mismo patrón que DIGEST_STATE_FILE: JSON junto a la
+# base, `TG_IMMEDIATE_STATE` lo mueve (tests -> tmp_path).
+IMMEDIATE_STATE_FILE = "estado_inmediato.json"
+
 # Alert types that are always unprecedented (loop / health).
 _ALWAYS_IMMEDIATE_TYPES = frozenset(
     {"SYSTEM_DEAD", "DEAD", "FALLO", "FALLO_CICLO",
-     "FULGURACION_X", "FULGURACION_M"}   # GOES flares: page immediately
+     "FULGURACION_X", "FULGURACION_M",  # GOES flares: page immediately
+     # P2 2026-11-10: CRITICO/GRIETA/TORMENTA explícitos en inmediato (antes
+     # caían al default `return False` -> digesto). Son las plantillas
+     # rojas/amarillas de centinela (riesgo>=0.75, Bz<=-5 nT, viento>=600);
+     # el anti-spam lo pone el cooldown de _send (IMMEDIATE_COOLDOWN_S),
+     # no el buffer.
+     "CRITICO", "GRIETA", "TORMENTA"}
 )
 
 # Routine types that never page, even if severity is rojo/amarillo.
@@ -479,6 +491,9 @@ class ConsensoVigilante:
         self.last_digest_ts: float = self._load_last_digest_ts()
         self.dispatched: List[DispatchRecord] = []
         self._immediate_last: Dict[str, float] = {}
+        # P2 2026-11-10: el cooldown se LEE del disco (ver IMMEDIATE_STATE_FILE);
+        # sin esto cada reinicio creía que nunca se había paginado ese tipo.
+        self._load_immediate_last()
 
     # ------------------------------------------------------------------ #
     # Public API
@@ -604,6 +619,71 @@ class ConsensoVigilante:
                 "no se pudo guardar la marca del digesto en %s (%s) --- la "
                 "cadencia vuelve a depender de la memoria del proceso y "
                 "`TG_DIGEST_MINUTES` deja de valer entre corridas", ruta, exc)
+
+    # ------------------------------------------------------------------ #
+    # Cooldown de inmediatos persistido (P2 2026-11-10)
+    # ------------------------------------------------------------------ #
+
+    def _immediate_state_path(self) -> Optional[Path]:
+        """Dónde vive el cooldown, o None si esta instancia no debe tocarlo.
+
+        Mismo patrón que `_digest_state_path`: `TG_IMMEDIATE_STATE` lo
+        mueve (tests -> tmp_path); en dry-run no hay archivo, para que una
+        prueba no contamine la cadencia de producción.
+        """
+        override = (os.environ.get("TG_IMMEDIATE_STATE") or "").strip()
+        if override:
+            return Path(override)
+        if self.dry_run or not self.db_path:
+            return None
+        return Path(self.db_path).parent / IMMEDIATE_STATE_FILE
+
+    def _load_immediate_last(self) -> None:
+        """Carga el cooldown desde disco a `self._immediate_last`.
+
+        Archivo ausente o ilegible -> dict vacío (sin cooldown heredado) y
+        warning si el archivo existe pero no se entiende. Valores futuros
+        respecto al reloj se descartan (mismo criterio que el digesto).
+        """
+        ruta = self._immediate_state_path()
+        if ruta is None:
+            return
+        try:
+            crudo = ruta.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            return  # primera corrida: normal, no es un fallo
+        except OSError as exc:
+            logger.warning("no se pudo leer el cooldown inmediato en %s (%s)", ruta, exc)
+            return
+        try:
+            datos = json.loads(crudo)
+            ahora = self._now()
+            for k, v in dict(datos).items():
+                ts = float(v)
+                if ts <= ahora + 60.0:
+                    self._immediate_last[str(k)] = ts
+        except (ValueError, TypeError, AttributeError) as exc:
+            logger.warning(
+                "cooldown inmediato ilegible en %s (%s) --- se ignora y se reescribe al próximo inmediato",
+                ruta, exc)
+
+    def _save_immediate_last(self) -> None:
+        """Guarda `_immediate_last` de forma atómica. Un fallo aquí NO tumba
+        el envío: lo peor que pasa es que el cooldown vuelva a depender de
+        la memoria del proceso hasta el próximo reinicio."""
+        ruta = self._immediate_state_path()
+        if ruta is None:
+            return
+        try:
+            ruta.parent.mkdir(parents=True, exist_ok=True)
+            tmp = ruta.with_suffix(".tmp")
+            tmp.write_text(
+                json.dumps({k: float(v) for k, v in self._immediate_last.items()}),
+                encoding="utf-8")
+            os.replace(tmp, ruta)
+        except OSError as exc:
+            logger.warning(
+                "no se pudo guardar el cooldown inmediato en %s (%s)", ruta, exc)
 
     def _tormenta_activa(self) -> Optional[Dict[str, Any]]:
         """¿Hay tormenta geomagnética AHORA? Kp>=5 en las últimas 3 h.
@@ -910,7 +990,7 @@ class ConsensoVigilante:
                 (kind, kind),
             ),
             (
-                "SELECT COUNT(*) FROM tbl_muro WHERE muro_breach = 1 "
+                "SELECT COUNT(*) FROM TBL_MURO_EVENTOS WHERE muro_breach = 1 "
                 "AND (risk_label = ? OR walls_active = ?)",
                 (kind, kind),
             ),
@@ -1256,7 +1336,7 @@ class ConsensoVigilante:
             try:
                 mrow = conn.execute(
                     "SELECT walls_active, muro_breach, risk_label "
-                    "FROM tbl_muro ORDER BY ts DESC LIMIT 1"
+                    "FROM TBL_MURO_EVENTOS ORDER BY timestamp DESC LIMIT 1"
                 ).fetchone()
             except Exception:
                 try:
@@ -1405,6 +1485,7 @@ class ConsensoVigilante:
                 return False
         if self.dry_run:
             self._immediate_last[alert_type] = self._now()
+            self._save_immediate_last()  # P2 2026-11-10: cooldown persistido
             logger.info(
                 "[DRY_RUN] CONSENSO %s: %s",
                 alert_type,
@@ -1424,6 +1505,7 @@ class ConsensoVigilante:
             )
             if ok:
                 self._immediate_last[alert_type] = self._now()
+                self._save_immediate_last()  # P2 2026-11-10: cooldown persistido
             return ok
         except Exception as exc:
             # `sin_token`: la excepción de `requests` trae la URL, y la URL de la

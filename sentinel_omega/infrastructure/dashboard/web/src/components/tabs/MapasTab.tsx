@@ -117,13 +117,13 @@ export function MapasTab() {
                 key={i}
                 className="flex items-center gap-3 p-2 rounded-lg border border-border bg-surface-sunken"
               >
-                <div className="mono texto-principal fuente-negrita">{nd.label}</div>
+                <div className="mono text-foreground font-bold">{nd.label}</div>
                 <div className="flex-1">
                   <div className="flex items-baseline gap-2">
                     <span className="mono texto-meta">Lat:</span>
-                    <span className="mono texto-principal fuente-negrita">{nd.lat?.toFixed(4)}</span>
+                    <span className="mono text-foreground font-bold">{nd.lat?.toFixed(4)}</span>
                     <span className="mono texto-meta">Lon:</span>
-                    <span className="mono texto-principal fuente-negrita">{nd.lon?.toFixed(4)}</span>
+                    <span className="mono text-foreground font-bold">{nd.lon?.toFixed(4)}</span>
                   </div>
                   <div className="w-full h-2 bg-surface-sunken mt-1 rounded-full overflow-hidden">
                     <div
@@ -140,7 +140,7 @@ export function MapasTab() {
                     {nd.updated && <span>{String(nd.updated).slice(0, 10)}</span>}
                   </div>
                 </div>
-                <div className="mono texto-principal fuente-negrita">
+                <div className="mono text-foreground font-bold">
                   <Cifra valor={nd.sat} digits={2} />
                 </div>
               </div>

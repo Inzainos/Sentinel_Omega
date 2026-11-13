@@ -28,7 +28,8 @@ Fases (v1: sólo detecta y reporta; v2: dispara el fix vía Concilio):
     * Si pasa, se aplica y se reinicia el servicio
 
 Uso:
-  .venv/bin/python deploy/auto_fix.py --detect          # v1: solo reporta
+  .venv/bin/python deploy/auto_fix.py --detect          # v1: solo reporta (suite completa)
+  .venv/bin/python deploy/auto_fix.py --detect --subset # v1: solo reporta (subset 4 h)
   .venv/bin/python deploy/auto_fix.py --detect --fix    # v2: dispara el fix
   .venv/bin/python deploy/auto_fix.py --status          # estado del último fix
 """
@@ -66,12 +67,24 @@ def _es_rojo_deliberado(fallo: str) -> bool:
     return any(r in fallo for r in ROJOS_DELIBERADOS)
 
 
-def detectar_tests() -> List[Dict]:
+# Subset rápido para la cadencia 4 h (P1, 2026-11-10): el muro (los 2 rojos
+# conocidos) + humo de la conexión de lote + aislamiento del estado vivo.
+# La suite completa corre 1×/día (sentinel-omega-autofix-full.timer).
+SUBSET_TESTS = [
+    "sentinel_omega/tests/test_muro_por_magnitud.py",
+    "sentinel_omega/tests/test_conexion_de_lote.py",
+    "sentinel_omega/tests/test_aislamiento_estado_vivo.py",
+]
+
+
+def detectar_tests(subset: bool = False) -> List[Dict]:
     """Suite roja que no sea los rojos deliberados."""
-    logger.info("corriendo suite de tests…")
+    objetivos = SUBSET_TESTS if subset else ["sentinel_omega/tests/"]
+    logger.info("corriendo suite de tests (%s)…",
+                "subset 4 h" if subset else "completa")
     r = subprocess.run(
         [str(RAIZ / ".venv/bin/python"), "-m", "pytest",
-         "sentinel_omega/tests/", "-q", "--tb=no", "-p", "no:warnings"],
+         *objetivos, "-q", "--tb=no", "-p", "no:warnings"],
         capture_output=True, text=True, timeout=1800, cwd=str(RAIZ))
     fallados = [l for l in r.stdout.splitlines() if l.startswith("FAILED")]
     reales = [f for f in fallados if not _es_rojo_deliberado(f)]
@@ -116,12 +129,56 @@ def detectar_journal(minutos: int = 30) -> List[Dict]:
 def _rebuild_en_curso() -> bool:
     """Si hay un rebuild corriendo, los servicios abajo y el WAL grande
     son ESPERADOS, no issues. Un falso positivo aquí mandaría al operador
-    a 'arreglar' lo que está trabajando bien."""
+    a 'arreglar' lo que está trabajando bien.
+
+    2026-11-10 (P1): la versión anterior devolvía True SIEMPRE — casaba
+    por subcadena ("inactive" contiene "active") contra el timer
+    sentinel-omega-rebuild-watch. Ahora se copia el patrón ya corregido
+    de vigilar_rebuild.sh:19-29: glob de units de rebuild REALES, se
+    excluye el propio -watch y se compara el campo de estado EXACTO
+    (active/activating), no subcadenas. Como rebuild_completo.py NO crea
+    units (corre por nohup + estado/rebuild.log), se suman dos señales
+    de disco/proceso: el proceso rebuild_completo.py vivo, o el log de
+    rebuild más reciente modificado hace <15 min SIN marcador de fin
+    ("✔ Generar reportes" o "[X] ... FALLO"). Un log viejo sin proceso
+    NO es rebuild en curso: el falso positivo queda acotado a 15 min.
+    """
     r = subprocess.run(["systemctl", "--user", "list-units", "--all",
-                        "--no-pager", "--no-legend"],
+                        "--no-pager", "--no-legend",
+                        "sentinel-omega-rebuild-*.service"],
                        capture_output=True, text=True)
-    return bool([l for l in r.stdout.splitlines() if "rebuild" in l.lower()
-                 and ("active" in l or "activating" in l)])
+    for linea in r.stdout.splitlines():
+        if "rebuild-watch" in linea:
+            continue
+        campos = linea.split()
+        if len(campos) >= 3 and campos[2] in ("active", "activating"):
+            logger.info("rebuild en curso: unit %s (%s)", campos[0], campos[2])
+            return True
+    proc = subprocess.run(["pgrep", "-f", "rebuild_completo.py"],
+                          capture_output=True, text=True)
+    if proc.stdout.strip():
+        logger.info("rebuild en curso: proceso rebuild_completo.py (pid %s)",
+                    proc.stdout.split()[0])
+        return True
+    logs = [p for p in (RAIZ / "estado").glob("rebuild*.log")
+            if "rebuild_watchdog" not in p.name]
+    if logs:
+        try:
+            ultimo = max(logs, key=lambda p: p.stat().st_mtime)
+            reciente = time.time() - ultimo.stat().st_mtime < 15 * 60
+        except OSError:
+            ultimo, reciente = None, False
+        if reciente and ultimo is not None:
+            try:
+                cola = ultimo.read_text(errors="replace")[-4000:]
+            except OSError:
+                cola = ""
+            if ("✔ Generar reportes" not in cola
+                    and not re.search(r"\[X\] .* FALLO", cola)):
+                logger.info("rebuild en curso: log reciente sin marcador "
+                            "de fin (%s)", ultimo.name)
+                return True
+    return False
 
 
 def detectar_servicios() -> List[Dict]:
@@ -253,10 +310,14 @@ CURAS = {
 
 
 def intentar_fix_deterministico(issue: Dict) -> Optional[str]:
-    """Si el issue matchea un patrón conocido, aplica la cura mecánica."""
-    detalle = issue.get("detalle", "").lower()
+    """Si el issue matchea un patrón conocido, aplica la cura mecánica.
+
+    2026-11-10 (P1): los patrones son regex (dos llevaban `.*` literal y
+    nunca casaban con matching por subcadena); se usa re.search().
+    """
+    detalle = issue.get("detalle", "")
     for nombre, regla in FIXES_DETERMINISTICOS.items():
-        if regla["patron"].lower() in detalle:
+        if re.search(regla["patron"], detalle, re.IGNORECASE):
             cura_fn = CURAS.get(regla["cura"])
             if cura_fn:
                 logger.info(f"fix determinístico: {nombre} ({regla['descripcion']})")
@@ -270,15 +331,18 @@ def intentar_fix_deterministico(issue: Dict) -> Optional[str]:
     return None
 
 
-def detectar_todo() -> List[Dict]:
+def detectar_todo(subset: bool = False) -> List[Dict]:
     """Todas las fuentes. Devuelve la lista de issues encontrados."""
     issues = []
-    for detector in (detectar_servicios, detectar_db,
-                     detectar_journal, detectar_tests):
+    for detector in (detectar_servicios, detectar_db, detectar_journal):
         try:
             issues.extend(detector())
         except Exception as e:
             logger.warning(f"detector {detector.__name__} falló: {e}")
+    try:
+        issues.extend(detectar_tests(subset=subset))
+    except Exception as e:
+        logger.warning(f"detector detectar_tests falló: {e}")
     return issues
 
 
@@ -404,7 +468,8 @@ def main() -> int:
         return 0
 
     fix = "--fix" in sys.argv
-    issues = detectar_todo()
+    subset = "--subset" in sys.argv
+    issues = detectar_todo(subset=subset)
     if not issues:
         logger.info("SIN ISSUES: todo verde")
         escribir_estado([], "limpio")
@@ -429,7 +494,11 @@ def main() -> int:
     escribir_estado(issues, "fix_intentado" if fix else "detectado")
     logger.info(f"{len(issues)} issues {'con fix' if fix else 'detectados'} "
                 f"— estado en {ESTADO_PATH}")
-    return len(issues)
+    # 2026-11-10 (P1): exit 0 AUNQUE haya issues detectados. Detectar es el
+    # trabajo, no el fallo: el estado queda en auto_fix_estado.json y el
+    # `failed` de systemd debe significar "no corrió", no "encontró algo".
+    # Antes: return len(issues) marcaba failed en cada corrida con issues.
+    return 0
 
 
 if __name__ == "__main__":

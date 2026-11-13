@@ -1,21 +1,25 @@
 # Dashboard — Sentinel Omega
 
-Dos tableros conviven, con propósitos distintos:
+Tres tableros conviven, con propósitos distintos:
 
 | | Stack | Puerto | Estado |
 |---|---|---|---|
-| **Moderno** | React 19 + Vite 6 + Tailwind 4 → FastAPI | `5173` (dev) → `8787` (API) | **el que se trabaja** |
+| **Principal** | **Dash/Plotly + FastAPI** (login + 17 tabs) | **`8128`** → `8787` (API) | **activo, principal** |
+| Legacy | React 19 + Vite 6 + Tailwind 4 → FastAPI | `5173` (dev) → `8787` (API) | **legacy, comentado** |
 | Legacy | Streamlit + Plotly (11 pestañas) | `8510` | se conserva, no se amplía |
 
 ```bash
 # API (siempre primero: el front sin ella no tiene datos)
 python -m uvicorn sentinel_omega.infrastructure.dashboard.api:app --host 127.0.0.1 --port 8787
 
-# Front en desarrollo
+# Principal (Dash/Plotly) - 8128
+cd sentinel_omega/infrastructure/dashboard/dash && python app.py
+
+# Legacy (React/Vite) - 5173 (comentado/deshabilitado)
 cd sentinel_omega/infrastructure/dashboard/web && npm run dev
 
-# Build de producción → dist/
-npm run build
+# Build de producción React → dist/
+cd sentinel_omega/infrastructure/dashboard/web && npm run build
 ```
 
 ---
@@ -69,13 +73,16 @@ centrado con tres tarjetas iguales es el error más común y el más caro.
 |---|---|---|
 | Presentación | **Decide/Learn** | la única donde un hero es correcto |
 | Principal | **Monitor** | densidad, lectura de reojo, sin hero — con las **Señales vivas con countdown** (reestructuración 2026-10-20: el leading que anticipa, `/api/estado-vivo`) y la **Cimática como figura** (clave → SVG determinista tipo Chladni, `CimaticaFigura.tsx`) |
+| Cimática | **Monitor** | figura determinista (clave → SVG Chladni), tono espectral, top patrones, biblioteca |
 | Loki | **Monitor** | resonancia del ciclo mayor: el estado medido del rediseño 2026-10-12 (KPI de resonancia, posterior, última tormenta, reasoning vivo) |
 | Padre+Juez | **Compare** | los 4 KPI del nulo del lag + veredictos del Juez fase viva |
 | Predicciones | **Monitor** | estado de precursores y ventana |
 | Mapas | **Explore** | mapa primero, controles al margen |
 | Señales | **Monitor** | telemetría cruda por familia |
+| Espacio Firmas | **Explore** | firmas PCA 2D, cobertura, exigible |
 | Modelos | **Compare** | 9 bots enfrentados, columnas alineadas |
 | Reportes | **Explore** | bitácora navegable |
+| Síntesis | **Monitor** | resumen ejecutivo del consenso, KPIs, veredictos |
 
 **La trampa de las pestañas sin montar (medida dos veces: 25-sep y 12-oct).**
 `App.tsx` monta lo que monta — existir en `components/tabs/` no es ser
@@ -84,9 +91,10 @@ visible. El 10-08 los 4 KPI del nulo del lag se escribieron en
 Ese día se montaron Loki y Padre+Juez, y se **borraron** `ConsensoTab` y
 `SistemaTab` (muertas y ROTO: referenciaban un namespace `api.system` que
 nunca existió — tsc no las veía porque los archivos no importados no
-entran al grafo de compilación). `FamiliasTab` y `OmegaTab` siguen en el
-árbol sin montar: funcionales, montables, documentadas aquí para que nadie
-las dé por visibles ni por basura.
+entran al grafo de compilación). **Nov 2026:** se montaron Cimática, Loki,
+Padre+Juez, Espacio Firmas, Síntesis — quedan sin montar solo `FamiliasTab`
+y `OmegaTab` (funcionales, documentadas aquí para que nadie las dé por
+visibles ni por basura).
 
 ---
 

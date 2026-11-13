@@ -13,6 +13,7 @@ llano y barras visuales donde ayuda.
 import json
 import sqlite3
 import sys
+import time
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -280,6 +281,68 @@ def generar(db_path: str = DB_DEFAULT, out_path: str = OUT_DEFAULT) -> str:
             "",
         ]
 
+    # ── 🧱 Muro de los 5 frentes — detalle por pared ──
+    # Cada pared se enciende si al menos una de sus señales está activa.
+    # FANTASMA (en pared SOLAR) necesita ≥15 para encenderse.
+    try:
+        muro_walls = {
+            "GEOFÍSICO": {
+                "señales": ["SEISMIC_CLUSTER", "VOLCANICO"],
+                "activo": False,
+                "detalle": [],
+            },
+            "ATMOSFÉRICO": {
+                "señales": ["BLUE_JET", "SPRITE_ROJO", "NIEBLA_TULE"],
+                "activo": False,
+                "detalle": [],
+            },
+            "OCEÁNICO": {
+                "señales": ["TSUNAMI", "HURACAN"],
+                "activo": False,
+                "detalle": [],
+            },
+            "SOLAR/GEOMAGNÉTICO": {
+                "señales": ["TORMENTA_SOLAR", "PERTURBACION_GEOMAGNETICA", "SCHUMANN", "SILENT_TRIGGER", "GRB", "FANTASMA"],
+                "activo": False,
+                "detalle": [],
+            },
+            "FINANCIERO/SOCIAL": {
+                "señales": ["CORRELACION_FINANCIERA"],
+                "activo": False,
+                "detalle": [],
+            },
+        }
+
+                # Check muro status from latest TBL_MURO_EVENTOS
+        muro_row = conn.execute(
+            "SELECT wall_geofisico, wall_atmosferico, wall_oceanico, wall_solar, wall_financiero "
+            "FROM TBL_MURO_EVENTOS ORDER BY timestamp DESC LIMIT 1"
+        ).fetchone()
+
+        if muro_row:
+            muro_walls_list = ["GEOFÍSICO", "ATMOSFÉRICO", "OCEÁNICO", "SOLAR/GEOMAGNÉTICO", "FINANCIERO/SOCIAL"]
+            for i, wall_name in enumerate(muro_walls_list):
+                if muro_row[i]:
+                    muro_walls[wall_name]["activo"] = True
+                    muro_walls[wall_name]["detalle"].append(f"BD: {muro_row[i]}")
+
+        lineas += ["## 🧱 Muro de los 5 frentes — detalle", ""]
+
+        for wall_name, info in muro_walls.items():
+            estado = "✅ ACTIVO" if info["activo"] else "⬜ INACTIVO"
+            lineas.append(f"### {wall_name} {estado}")
+            if info["detalle"]:
+                for d in info["detalle"]:
+                    lineas.append(f"- `{d}`")
+            else:
+                lineas.append("- Sin señales activas (calma actual)")
+            lineas.append("")
+
+        lineas += ["", "---", ""]
+
+    except sqlite3.OperationalError:
+        pass
+
     # ── 📈 Operación reciente: hoy vs cómo solía estar ──
     # No solo la foto: la posición contra las últimas semanas del propio
     # sistema en vivo (medias 7/30 días + percentil).
@@ -516,10 +579,11 @@ def generar(db_path: str = DB_DEFAULT, out_path: str = OUT_DEFAULT) -> str:
     except sqlite3.OperationalError:
         pass
 
-    # ── Detecciones recientes ──
+    # ── Detecciones recientes (últimas 6h) ──
     dets = conn.execute(
-        "SELECT tipo, display_name, confidence, station FROM TBL_DETECCIONES "
-        "ORDER BY id DESC LIMIT 8"
+        "SELECT tipo, display_name, confidence, station, timestamp FROM TBL_DETECCIONES "
+        "WHERE timestamp >= ? ORDER BY id DESC LIMIT 8",
+        (time.time() - 6 * 3600,)
     ).fetchall()
     if dets:
         lineas += [
@@ -712,11 +776,12 @@ def generar(db_path: str = DB_DEFAULT, out_path: str = OUT_DEFAULT) -> str:
         try:
             dini = _dtn.strptime(ml[1], "%Y-%m-%d").date()
             dfin = _dtn.strptime(ml[2], "%Y-%m-%d").date()
-            hoy = _dtn.utcnow().date()
+            hoy = _dtn.now(_dtn.timezone.utc).date()  # P2 2026-11-10: utcnow() deprecado
             rini = max(0, (dini - hoy).days)
             rfin = max(0, (dfin - hoy).days)
             t0 = _dtn.strptime(ml[3], "%Y-%m-%d %H:%M")
-            transc = max(0, (_dtn.utcnow() - t0).days)
+            # P2 2026-11-10: utcnow() deprecado; t0 es naive -> se compara naive-equivalente
+            transc = max(0, (_dtn.now(_dtn.timezone.utc).replace(tzinfo=None) - t0).days)
             clases_ml = ", ".join(_json.loads(ml[0] or "[]"))
             lineas += [
                 "## 🕐 Ventana temporal activa (muro de lags)",

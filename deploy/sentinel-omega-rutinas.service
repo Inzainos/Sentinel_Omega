@@ -11,6 +11,6 @@ After=network-online.target
 
 [Service]
 Type=oneshot
-WorkingDirectory=%h/workspaces
-EnvironmentFile=%h/workspaces/deploy/.env
-ExecStart=/bin/bash %h/workspaces/deploy/rutinas_locales.sh
+WorkingDirectory=/home/deamon/Sentinel_Omega
+EnvironmentFile=/home/deamon/.env.deamon
+ExecStart=/bin/bash /home/deamon/Sentinel_Omega/deploy/rutinas_locales.sh

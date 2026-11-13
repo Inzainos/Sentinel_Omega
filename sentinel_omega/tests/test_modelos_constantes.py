@@ -37,6 +37,15 @@ La suite llevaba ROJA desde el 5-oct con el diagnóstico escrito, y nadie miró:
 
 Esta prueba existe para que la próxima vez el rojo diga *constante*, que es la
 causa, y no solo *alarmó*, que es el síntoma.
+
+Epílogo D9 (2026-11-12, decisión de Elán): alfa1 variaba (0,1663) pero su AUC
+0,478 estaba POR DEBAJO del azar y votaba WATCH 0,69 en calma, o sea ruido con
+peso. Elán ordenó apagarlo: desde entonces los OCHO modelos están apagados y
+los 8 bots votan por REGLA. El test `test_alfa1_sigue_encendido_porque_SI_varia`
+se convirtió en `test_alfa1_apagado_por_decision_D9`, y
+`test_queda_al_menos_un_modelo_vivo` en
+`test_ningun_modelo_onnx_vivo_por_decision_D9`. Reentrenar solo después de
+resolver 22 (fuente de Kp) y 26 (re-etiquetado).
 """
 import pytest
 
@@ -65,12 +74,16 @@ def test_los_modelos_constantes_siguen_apagados(bot):
         "Encenderlo constante es volver a alarmar sin información.")
 
 
-def test_alfa1_sigue_encendido_porque_SI_varia():
-    """Es el único con discriminación real (0,1663). Apagarlo por error dejaría
-    al sistema sin ningún modelo que responda al dato."""
-    assert onnx_config.alfa1.enabled is True, (
-        "se apagó alfa1, el único modelo cuya confianza varía de verdad "
-        f"({DESVIACIONES_MEDIDAS['alfa1']} contra <0,02 de los demás)")
+def test_alfa1_apagado_por_decision_D9():
+    """D9 (Elán, 2026-11-12): alfa1 se APAGÓ a propósito. Variaba (0,1663),
+    pero su AUC 0,478 está POR DEBAJO del azar y votaba WATCH 0,69 en calma:
+    ruido con peso. Vota solo por REGLA como los otros 6. Reentrenar solo
+    después de resolver 22 (fuente de Kp) y 26 (re-etiquetado), porque hoy
+    entrenaría sobre etiquetas y features dudosas."""
+    assert onnx_config.alfa1.enabled is False, (
+        "alfa1 se encendió sin decisión. Antes de hacerlo hay que REENTRENAR "
+        "y comprobar que su AUC sube de 0,5 contra el nulo por nodo (el "
+        "2026-11-10 era 0,478) y que deja de votar WATCH 0,69 en calma.")
 
 
 # (2026-10-18: test_jupiter_sigue_encendido_porque_FRENA_su_regla fue
@@ -117,11 +130,15 @@ def test_el_corte_y_lo_apagado_se_derivan_de_la_misma_medicion():
 
 
 
-def test_queda_al_menos_un_modelo_vivo():
-    """El sistema no puede quedarse sin ninguna rama ML sin que alguien lo
-    decida: si todos se apagan, que falle aquí y se vea."""
+def test_ningun_modelo_onnx_vivo_por_decision_D9():
+    """D9 (Elán, 2026-11-12): el sistema YA NO TIENE ningún modelo ONNX vivo,
+    por decisión explícita, no por accidente. alfa1 era el último encendido
+    y se apagó (AUC 0,478 < azar, WATCH 0,69 en calma). Los 8 bots votan por
+    REGLA. Si un día se reenciende un modelo, esta prueba debe cambiar con la
+    decisión que lo respalde, no en silencio."""
     from sentinel_omega.core.features_onnx import BOT_DIMS
 
     vivos = [b for b in BOT_DIMS if getattr(onnx_config, b).enabled]
-    assert vivos, "se apagaron TODOS los modelos ONNX"
-    assert "alfa1" in vivos, vivos
+    assert vivos == [], f"hay modelos ONNX encendidos sin decisión registrada: {vivos}"
+    assert set(BOT_DIMS) == set(CONSTANTES_APAGADOS) | {"alfa1", "alfa2"}, (
+        f"BOT_DIMS cambió sin actualizar los conjuntos de apagados: {sorted(BOT_DIMS)}")

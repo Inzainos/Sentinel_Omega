@@ -8,9 +8,10 @@ Wants=sentinel-omega-dashboard-api.service
 
 [Service]
 Type=simple
-WorkingDirectory=%h/workspaces/sentinel_omega/infrastructure/dashboard/web
+WorkingDirectory=/home/deamon/Sentinel_Omega/sentinel_omega/infrastructure/dashboard/web
 Environment=NODE_ENV=development
-ExecStart=/usr/bin/env npm run dev -- --host 127.0.0.1 --port 5173
+Environment=PATH=/mnt/c/Users/elanz/AppData/Local/hermes/node:/usr/bin:/bin
+ExecStart=/mnt/c/Users/elanz/AppData/Local/hermes/node/npm run dev -- --host 127.0.0.1 --port 5173
 Restart=always
 RestartSec=10
 

@@ -120,6 +120,18 @@ class AssertivityTracker:
         for pred in self._predictions:
             matched = False
             for event in filtered_events:
+                # P2 2026-11-10: ventana temporal. El evento (epoch s en
+                # "time") debe caer en [pred.timestamp,
+                # pred.timestamp + window_days]. Sin tiempo válido el evento
+                # no puede confirmar la predicción (no cuenta como hit). El
+                # conteo de misses no cambia: sigue por coordenadas.
+                t_ev = event.get("time")
+                try:
+                    t_ev = float(t_ev)
+                except (TypeError, ValueError):
+                    continue
+                if not (pred.timestamp <= t_ev <= pred.timestamp + self._window_days * 86400):
+                    continue
                 dist = self._euclidean_distance(
                     pred.latitude, pred.longitude,
                     event.get("latitude", 0), event.get("longitude", 0),

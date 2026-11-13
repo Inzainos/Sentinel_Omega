@@ -23,6 +23,7 @@ import logging
 import os
 import re
 import time
+from enum import Enum
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional, Tuple
 
@@ -30,12 +31,39 @@ from typing import Dict, Optional, Tuple
 import sys
 from pathlib import Path
 
-# Try multiple possible locations for consensus-expert-agent
+# Try multiple possible locations for the alert queue host.
+#
+# Migración 2026-11-10 (orden de Elán, decisión 4): el Experto Sentinel
+# quedó anidado en /home/deamon/Sentinel_Omega/sentinel_experto y el dir
+# externo /home/deamon/sentinel_experto se retiró. La cola CANÓNICA sigue
+# siendo la del consenso (entrada 2, se resuelve primero); esta entrada 3
+# es solo fallback. TRAMPA LATENTE (R1): si el consenso fallara, Omega
+# encolaría en la cola anidada, que nadie drena — no setear
+# EXPERTO_SENTINEL_ROOT al anidado.
 CONSENSUS_PATHS = [
-    Path("/home/deamon/consensus-expert-agent"),  # Standard location
+    Path(os.environ.get("EXPERTO_SENTINEL_ROOT", "")) if os.environ.get("EXPERTO_SENTINEL_ROOT") else None,
+    Path("/home/deamon/consensus-expert-agent"),  # Standard location (canonical)
+    Path("/home/deamon/Sentinel_Omega/sentinel_experto"),  # Experto Sentinel anidado (fallback, migración 2026-11-10)
     Path(os.environ.get("CONSENSUS_EXPERT_AGENT_ROOT", "")) if os.environ.get("CONSENSUS_EXPERT_AGENT_ROOT") else None,
-    Path(os.environ.get("SENTINEL_OMEGA_ROOT", "/home/deamon/workspaces/sentinel_omega")).parent / "consensus-expert-agent",
+    Path(os.environ.get("SENTINEL_OMEGA_ROOT", "/home/deamon/Sentinel_Omega/sentinel_omega")).parent / "consensus-expert-agent",
 ]
+
+# Fallback si el repo hermano (consensus-expert-agent / sentinel_experto)
+# no está en el checkout: `AlertPriority` SIEMPRE existe. En limpio el
+# import de arriba falla y el nombre quedaba sin ligar → NameError en
+# send_alert() (medido 2026-11-10, test_el_recorte_no_puede_partir_una_
+# etiqueta). Si el import real tiene éxito, re-liga el nombre al Enum de
+# alert_queue con los mismos miembros/valores.
+class _AlertPriorityFallback(Enum):
+    CRITICAL = "critical"
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+    HEARTBEAT = "heartbeat"
+    SYSTEM = "system"
+
+
+AlertPriority = _AlertPriorityFallback
 
 ALERT_QUEUE_AVAILABLE = False
 for p in CONSENSUS_PATHS:
@@ -196,27 +224,14 @@ def sin_token(texto: object) -> str:
     el nuevo. Se enmascara por patrón --- `<dígitos>:<35 caracteres>` --- y no
     comparando contra la variable de entorno, para que también cubra un token
     de otro bot que aparezca en el mismo mensaje.
-    """
-    import re
 
-    # Dos detalles que hacen la diferencia entre enmascarar y fingir que se
-    # enmascara, los dos aprendidos a golpes el 2026-09-27:
-    #
-    #   * sin `\b` delante: en `.../bot8412345678:AAH…` la `t` y el dígito son
-    #     los dos caracteres de palabra, así que NO hay frontera y el patrón con
-    #     `\b` no casaba --- por eso una primera pasada dejó el log intacto
-    #   * `{30,}` en vez de `{35}`: el token suele traer 35 caracteres tras los
-    #     dos puntos, pero no está garantizado, y un patrón clavado en 35 falla
-    #     EN SILENCIO con uno de 36. Enmascarar de más es inofensivo; de menos,
-    #     es una fuga
-    texto = re.sub(
-        r"(?<![0-9])[0-9]{8,10}:[A-Za-z0-9_-]{30,}",
-        "<TOKEN>", str(texto),
-    )
-    # Segunda red: el tramo `/bot<lo-que-sea>:<lo-que-sea>/` de la URL de la
-    # API se redacta aunque el token no tenga la forma canónica (uno truncado,
-    # uno de pruebas), para que la URL de la petición nunca salga con token.
-    return re.sub(r"/bot[^/\s]*:[^/\s]*/", "/bot<TOKEN>/", texto)
+    Desde el 2026-10-25 delega en `_redact.sin_credenciales`, que además
+    enmascara query-params de credencial (`appid=`, `api_key=`, …): el
+    mismo patrón de fuga medido ese día con la llave de OWM en el mismo log.
+    """
+    from sentinel_omega.infrastructure.api._redact import sin_credenciales
+
+    return sin_credenciales(texto)
 
 
 def _registrar_si_no_ok(resp: object, operacion: str) -> None:
@@ -299,11 +314,48 @@ def _get_credentials() -> Optional[Tuple[str, str]]:
     return token, chat_id
 
 
-def send_alert(message: str, parse_mode: str = "HTML", reply_markup: Optional[dict] = None) -> bool:
-    """Envío directo (sin gate). Preferir send_alert_gated en ciclos.
-    
-    NUEVO: Si alert queue está disponible, escribe a cola en lugar de enviar directo.
+# Severidad → prioridad de cola. `queue_critical` / `queue_warning` /
+# `queue_info` se importan del hermano pero NO se usan aquí a propósito:
+# en checkout limpio no existen y el test que fuerza
+# ALERT_QUEUE_AVAILABLE=True solo remienda `queue_alert`; todo el camino
+# de cola pasa por `queue_alert(título, mensaje, prioridad, parse_mode)`.
+_PRIORIDAD_CRITICA = ("CRIT", "SYSTEM_DEAD")
+_PRIORIDAD_ALTA = (
+    "GRIETA", "TORMENTA", "FULGURACION_X", "FULGURACION_M",
+    "MURO_BREACH", "RISK_ELEVATED", "CONSENSUS_ALERT",
+)
+
+
+def _prioridad_para(alert_type: str):
+    """Prioridad de cola para un alert_type (CRITICO/GRIETA/...).
+
+    Antes todo viajaba como "Direct Alert"/MEDIUM en FIFO: un CRÍTICO,
+    un digesto y una plantilla eran indistinguibles en la cola.
     """
+    t = (alert_type or "").upper()
+    if "HEARTBEAT" in t:
+        return AlertPriority.HEARTBEAT
+    if any(k in t for k in _PRIORIDAD_CRITICA):
+        return AlertPriority.CRITICAL
+    if any(k in t for k in _PRIORIDAD_ALTA):
+        return AlertPriority.HIGH
+    return AlertPriority.MEDIUM
+
+
+def send_alert(message: str, parse_mode: str = "HTML", reply_markup: Optional[dict] = None,
+               alert_type: str = "Direct Alert") -> bool:
+    """Envío directo (sin gate). Preferir send_alert_gated en ciclos.
+
+    NUEVO: Si alert queue está disponible, escribe a cola en lugar de enviar directo.
+    `alert_type` es el título en la cola y decide la prioridad
+    (_prioridad_para): un CRITICO ya no viaja como "Direct Alert"/MEDIUM
+    en FIFO con el resto.
+    """
+    # SENTINEL_DRY_RUN: ni cola ni Bot API (igual que send_photo). Las
+    # plantillas P2H–P24H iban directo sin respetar el dry-run.
+    if os.environ.get("SENTINEL_DRY_RUN", "").lower() in ("1", "true", "yes"):
+        logger.info("[DRY_RUN] Telegram alert skipped (not queued/sent): %s", alert_type)
+        return True
     # Recortar ANTES de sanear, y sanear en los DOS caminos.
     #
     # El orden importa: un recorte después del saneo puede partir una etiqueta
@@ -320,7 +372,8 @@ def send_alert(message: str, parse_mode: str = "HTML", reply_markup: Optional[di
     if (parse_mode or "").upper() == "HTML":
         message = sanear_html_telegram(message)
     if ALERT_QUEUE_AVAILABLE:
-        queue_alert("Direct Alert", message, AlertPriority.MEDIUM, parse_mode)
+        queue_alert(alert_type or "Direct Alert", message,
+                    _prioridad_para(alert_type), parse_mode)
         return True
 
     # Fallback: envío directo legacy
@@ -359,7 +412,8 @@ def send_alert_gated(
     if not _GATE.allow(alert_type, cooldown=cooldown):
         logger.debug(f"Telegram gated skip: {alert_type}")
         return False
-    return send_alert(message, parse_mode=parse_mode, reply_markup=reply_markup)
+    return send_alert(message, parse_mode=parse_mode, reply_markup=reply_markup,
+                      alert_type=alert_type)
 
 
 

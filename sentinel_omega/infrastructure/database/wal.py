@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 # Por debajo de esto no se toca nada: el WAL es sano y útil, evita reescribir
 # la base en cada transacción.
-UMBRAL_MB = 800.0
+UMBRAL_MB = 200.0  # P2 2026-11-10: bajado de 800; el launcher lee el yaml (200) en vivo
 ESPERA_S = 30.0
 
 

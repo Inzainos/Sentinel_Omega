@@ -54,6 +54,16 @@ def _resolve_db() -> Path:
 DB_PATH = _resolve_db()
 DB_URI = f"file:{DB_PATH}?mode=ro"
 
+# Bots RETIRADOS (decisión del operador sobre medición): no se muestran en
+# las superficies ACTIVAS del tablero (voto, pesos de credibilidad), porque
+# ya no forman parte de la arquitectura viva. Su historia se conserva
+# append-only en la DB (TBL_PESOS_BOTS, TBL_FIRMAS, TBL_JUEZ_AUDITORIA):
+# este filtro es de PRESENTACIÓN, no borra nada.
+#   jupiter — retirado 2026-10-18: 0 alertas en 168 ciclos, 0 exigibles de
+#   27 consolidadas; sus señales únicas se redistribuyeron (xray→alfa2,
+#   trends→delta).
+BOTS_RETIRADOS = {"jupiter"}
+
 app = FastAPI(
     title="Sentinel Omega Dashboard API",
     version="0.2.0",
@@ -63,6 +73,8 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        "http://127.0.0.1:8128",
+        "http://localhost:8128",
         "http://127.0.0.1:5173",
         "http://localhost:5173",
         "http://127.0.0.1:5174",
@@ -587,6 +599,9 @@ def correlaciones() -> Dict[str, Any]:
 @app.get("/api/bots")
 def bots() -> Dict[str, Any]:
     rows = _rows("SELECT bot_name, peso, aciertos, fallos, updated_at FROM TBL_PESOS_BOTS ORDER BY bot_name")
+    # Los RETIRADOS no se sirven en las superficies activas (ver BOTS_RETIRADOS
+    # arriba): su peso congelado junto a los vivos se lee como «todavía vota».
+    rows = [r for r in rows if str(r.get("bot_name") or "").lower() not in BOTS_RETIRADOS]
 
     # ── El MARCADOR no es el VOTO (2026-10-08) ──────────────────────────────
     #
@@ -618,6 +633,9 @@ def bots() -> Dict[str, Any]:
         _aplic = int(_p.pop("_meritos_aplicados", 0) or 0)
         _comp = int(_p.pop("_competencias_aplicadas", 0) or 0)
         voto = {str(k).lower(): float(v) for k, v in _p.items()}
+        # Un retirado no vota: fuera del dict del voto también, o el front lo
+        # volvería a dibujar si algún día itera `voto` en vez de `items`.
+        voto = {k: v for k, v in voto.items() if k not in BOTS_RETIRADOS}
         voto_meta = {
             "disponible": True,
             "por_merito_pedido": _por_merito,
@@ -691,6 +709,11 @@ def bots() -> Dict[str, Any]:
     ):
         nombre = str(r.get("bot_name") or "").lower()
         if nombre in con_peso:
+            continue
+        # Los retirados tampoco entran por la vía de notificador: su historia
+        # en TBL_JUEZ_AUDITORIA sigue viva (append-only), pero el tablero de
+        # estado activo no los lista.
+        if nombre in BOTS_RETIRADOS:
             continue
         a = int(r.get("aciertos") or 0)
         f = int(r.get("fallos") or 0)
@@ -943,6 +966,94 @@ def firmas() -> Dict[str, Any]:
     by_clase = _rows("SELECT event_class AS clase, COUNT(*) AS n FROM TBL_FIRMAS GROUP BY event_class ORDER BY n DESC")
     total = int(_scalar("SELECT COUNT(*) FROM TBL_FIRMAS") or 0)
     return _jsonable({"present": True, "source": "TBL_FIRMAS", "total": total, "by_clase": by_clase})
+
+
+@app.get("/api/firmas-espacio")
+def firmas_espacio(
+    limit: int = Query(2000, ge=1, le=10000),
+    bot: Optional[str] = Query(None),
+    estado: Optional[str] = Query(None),
+) -> Dict[str, Any]:
+    """Espacio de firmas: vectores features_json listos para proyección MDS/PCA.
+
+    Devuelve cada firma con sus features numéricos parseados, metadatos
+    (bot, clase, recurrencia, estado, discriminación, exigible) y la lista
+    de todas las claves de feature encontradas. El front aplica MDS/PCA
+    para proyectar a 2D/3D y colorear por clase de evento.
+
+    Regla de diseño 3: un .onnx en disco no es un modelo que acierte;
+    aquí una firma en disco no es conocimiento demostrado — `exigible` y
+    `discriminacion` son los campos que deciden.
+    """
+    if not _table_exists("TBL_FIRMAS"):
+        return {"present": False, "firmas": [], "feature_keys": [], "total": 0}
+
+    where = "WHERE 1=1"
+    params: list = []
+    if bot:
+        where += " AND lower(bot_name) = lower(?)"
+        params.append(bot)
+    if estado:
+        where += " AND lower(estado) = lower(?)"
+        params.append(estado)
+
+    rows = _rows(
+        f"""SELECT firma_id, bot_name, event_class, id_nodo, features_json,
+                   ventana_horas, recurrencia, estado, primera_vista, ultima_vista,
+                   discriminacion, exigible, discrimina_lift
+            FROM TBL_FIRMAS {where}
+            ORDER BY firma_id DESC LIMIT ?""",
+        tuple(params + [limit]),
+    )
+
+    if not rows:
+        return {"present": False, "firmas": [], "feature_keys": [], "total": 0}
+
+    # Recopilar todas las claves de feature numérico presentes en cualquier firma.
+    all_keys: set = set()
+    parsed: list = []
+    for r in rows:
+        try:
+            feats = json.loads(r.get("features_json") or "{}")
+        except (json.JSONDecodeError, TypeError):
+            feats = {}
+        num_feats = {k: v for k, v in feats.items() if isinstance(v, (int, float))}
+        all_keys.update(num_feats.keys())
+        parsed.append({**r, "features": num_feats})
+
+    feature_keys = sorted(all_keys)
+
+    # Construir matriz de features (firma × feature) con 0 para faltantes.
+    firmas_out = []
+    for r in parsed:
+        feats = r["features"]
+        vector = [float(feats.get(k, 0) or 0) for k in feature_keys]
+        firmas_out.append({
+            "firma_id": r.get("firma_id"),
+            "bot_name": r.get("bot_name"),
+            "event_class": r.get("event_class"),
+            "id_nodo": r.get("id_nodo"),
+            "recurrencia": r.get("recurrencia"),
+            "estado": r.get("estado"),
+            "discriminacion": r.get("discriminacion"),
+            "exigible": r.get("exigible"),
+            "discrimina_lift": r.get("discrimina_lift"),
+            "primera_vista": r.get("primera_vista"),
+            "ultima_vista": r.get("ultima_vista"),
+            "features": vector,
+            "feature_keys": feature_keys,  # mismo orden para todo el lote
+        })
+
+    return _jsonable({
+        "present": True,
+        "source": "TBL_FIRMAS",
+        "total": len(firmas_out),
+        "feature_keys": feature_keys,
+        "firmas": firmas_out,
+        "nota": "Cada firma tiene un vector de features del mismo orden que feature_keys. " +
+                "Valores faltantes = 0. Aplicar MDS/PCA sobre la matriz features×firmas " +
+                "para proyectar a 2D/3D. UMBRAL 0,80 = distancia mínima de similitud.",
+    })
 
 
 @app.get("/api/modelos")
@@ -1641,7 +1752,7 @@ def cimatica_ahora() -> Dict[str, Any]:
         latest_pat = None
         if _table_exists("tbl_cimatica_patrones"):
             latest_pat = con.execute(
-                """SELECT patron_id, clave, ambito, id_nodo, event_class, frecuencia, primera_vez, ultima_vez
+                """SELECT patron_id, clave, ambito, id_nodo, event_class, frecuencia, primera_vez, ultima_vez, telemetria_json
                    FROM tbl_cimatica_patrones ORDER BY ultima_vez DESC LIMIT 1"""
             ).fetchone()
 
@@ -1664,13 +1775,18 @@ def cimatica_ahora() -> Dict[str, Any]:
                 "FROM tbl_cimatica_biblioteca GROUP BY 1 ORDER BY 3 DESC LIMIT 20"
             ) if n_lib else []
 
-        # Intento de lookup live (si existe helper), de lo contrario salida honesta parcial.
+        # Intento de lookup live. La figura viva REAL es el último snapshot
+        # cimático (clave + telemetría completa): el veredicto de beta1 NO
+        # lleva figura — medido el 2026-10-25, sus detalles_json no tienen
+        # clave_figura/figura/factores, y este bloque machacaba la clave
+        # buena del patrón con vacío → el lookup daba 0 hits SIEMPRE.
         figura, factores, clave_fig = {}, {}, ""
         if latest_pat is not None:
             try:
                 clave_fig = str(latest_pat["clave"] or "")
+                figura = json.loads(str(latest_pat["telemetria_json"] or "{}"))
             except Exception:
-                clave_fig = ""
+                figura = {}
         if lookup_available:
             try:
                 row = con.execute(
@@ -1679,11 +1795,14 @@ def cimatica_ahora() -> Dict[str, Any]:
                 ).fetchone()
                 if row and row[0]:
                     det = json.loads(row[0])
-                    figura = det.get("figura") or {}
-                    factores = det.get("factores") or {}
-                    clave_fig = det.get("clave_figura") or ""
+                    # beta1 sólo manda si su veredicto TRAE figura; si no,
+                    # el snapshot del patrón es la fuente.
+                    if det.get("clave_figura"):
+                        figura = det.get("figura") or figura
+                        factores = det.get("factores") or {}
+                        clave_fig = str(det["clave_figura"])
             except Exception:
-                figura, factores, clave_fig = {}, {}, ""
+                pass
 
         hit = {
             "similares": [],
@@ -1757,6 +1876,10 @@ def heatmaps() -> Dict[str, Any]:
                 continue
             by_bot.setdefault(b, {})[str(r["dia"])] = float(r["rate"])
         bots = sorted(by_bot.keys())
+        # Retirados fuera de las superficies activas (BOTS_RETIRADOS, ver
+        # arriba): jupiter se retiró 2026-10-18 pero su historia sigue en
+        # TBL_JUEZ_AUDITORIA, así que sin este filtro reaparece aquí.
+        bots = [b for b in bots if b.lower() not in BOTS_RETIRADOS]
         matrix = []
         for a in bots:
             row = []
@@ -1878,6 +2001,8 @@ def consenso(limit: int = Query(50, ge=1, le=500)) -> Dict[str, Any]:
                    FROM TBL_CICLOS ORDER BY timestamp DESC LIMIT ?""", (limit,))
     
     bots = _rows("SELECT bot_name, peso, aciertos, fallos, updated_at FROM TBL_PESOS_BOTS ORDER BY bot_name")
+    # Retirados fuera de las superficies activas (BOTS_RETIRADOS, ver arriba).
+    bots = [r for r in bots if str(r.get("bot_name") or "").lower() not in BOTS_RETIRADOS]
     
     # Enrich bots with asertividad
     enriched_bots = []
@@ -2026,19 +2151,14 @@ def clima_espacial(limit: int = Query(80, ge=1, le=400)) -> Dict[str, Any]:
 
 
 
-@app.get("/api/estado-vivo")
-def estado_vivo() -> Dict[str, Any]:
-    """El snapshot unificado del launcher (fresco ≤5 min) — UNA llamada.
+def _leer_snapshot_miniapp() -> Dict[str, Any]:
+    """Lee el snapshot que el launcher refresca cada ciclo (miniapp_estado.json).
 
-    Reestructuración del tablero (2026-10-20, libros de KPIs/UX): las
-    señales vivas con countdown, la auditoría con ganancia, la serie de
-    fantasma, cimática y sismos viajan JUNTAS en el JSON que el launcher
-    refresca cada ciclo con el código del paquete (core/nodos,
-    baseline) — el tablero pasa de 9 polls a 1 por esta parte. La edad
-    se sirve explícita: frescura visible, no disfrazada (regla 7/8).
+    Una sola lectura, compartida por /api/estado-vivo y
+    /api/estado-sistema-unificado (llamada directa, sin TestClient).
     """
     import time as _t
-    ruta = Path("/home/deamon/workspaces/estado/miniapp_estado.json")
+    ruta = Path("/home/deamon/Sentinel_Omega/estado/miniapp_estado.json")
     if not ruta.is_file():
         return {"ok": False, "error": "snapshot ausente (launcher sin correr)",
                 "edad_s": None}
@@ -2055,9 +2175,26 @@ def estado_vivo() -> Dict[str, Any]:
     return data
 
 
+@app.get("/api/estado-vivo")
+def estado_vivo() -> Dict[str, Any]:
+    """El snapshot unificado del launcher (fresco ≤5 min) — UNA llamada.
+
+    Reestructuración del tablero (2026-10-20, libros de KPIs/UX): las
+    señales vivas con countdown, la auditoría con ganancia, la serie de
+    fantasma, cimática y sismos viajan JUNTAS en el JSON que el launcher
+    refresca cada ciclo con el código del paquete (core/nodos,
+    baseline) — el tablero pasa de 9 polls a 1 por esta parte. La edad
+    se sirve explícita: frescura visible, no disfrazada (regla 7/8).
+    """
+    return _leer_snapshot_miniapp()
+
+
 @app.get("/api/health/apis")
-def api_health() -> Dict[str, Any]:
+def _health_apis() -> Dict[str, Any]:
     """Estado de las fuentes: LOCF cache + tablas vivas.
+
+    Implementación compartida por /api/health/apis y
+    /api/estado-sistema-unificado (llamada directa, sin TestClient).
 
     Reglas que este endpoint aprendió a golpes:
 
@@ -2124,8 +2261,50 @@ def api_health() -> Dict[str, Any]:
                 "last_data_ts": usgs_ts,
             }
 
-    # --- Schumann vivo: frescura Y variación ---
-    if _table_exists("tbl_schumann_vivo"):
+    # --- Schumann: CORTE DIARIO (2026-10-26) ---
+    # El fetch por ciclo se retiró (288 descargas/día de un valor que Tomsk
+    # reescribe igual cada hora, 212 fallos medidos). La fuente ahora es
+    # tbl_schumann_diario: 1 corte/día → LIVE si el corte es de hoy
+    # (≤30 h por el margen de reintento), CONGELADO si varios días repiten
+    # el MISMO valor (la fuente pegada), STALE si no hay corte reciente.
+    # Tabla diaria VACÍA (Tomsk caído todo el día, corte aún sin éxito):
+    # cae a la serie viva histórica — el chip no desaparece.
+    _sch_diario = (
+        _rows(
+            "SELECT fecha, actividad, tomado_en FROM tbl_schumann_diario "
+            "ORDER BY fecha DESC LIMIT 5"
+        )
+        if _table_exists("tbl_schumann_diario")
+        else []
+    )
+    if _sch_diario:
+        sch = _sch_diario
+        edad = _edad_horas(sch[0]["tomado_en"])
+        distintos_act = len({
+            r["actividad"] for r in sch if r["actividad"] is not None
+        })
+        congelado = len(sch) >= 3 and distintos_act <= 1
+        if congelado:
+            estado, nota = "CONGELADO", (
+                f"{len(sch)} cortes diarios con un solo valor "
+                f"({sch[0]['actividad']}). La fuente sirve lo mismo "
+                "cada día: se refresca pero no mide."
+            )
+        elif edad is None:
+            estado, nota = "DESCONOCIDO", "tomado_en ilegible"
+        elif edad <= 30:
+            estado, nota = "LIVE", "corte diario (una descarga/día)"
+        else:
+            estado, nota = "STALE", f"último corte: {sch[0]['fecha']}"
+        health["beta1"] = {
+            "status": estado,
+            "age_h": round(edad, 1) if edad is not None else None,
+            "valores_distintos": distintos_act,
+            "cadencia": "diaria",
+            "nota": nota,
+            "last_data_ts": sch[0]["tomado_en"],
+        }
+    elif _table_exists("tbl_schumann_vivo"):
         sch = _rows(
             "SELECT schumann_hz, schumann_activity, creada_at "
             "FROM tbl_schumann_vivo ORDER BY timestamp_blk DESC LIMIT 48"
@@ -2221,6 +2400,191 @@ def api_health() -> Dict[str, Any]:
             }
 
     return _jsonable(health)
+
+
+@app.get("/api/health/apis")
+def api_health() -> Dict[str, Any]:
+    """Estado de las fuentes: LOCF cache + tablas vivas (vía _health_apis)."""
+    return _health_apis()
+
+
+@app.get("/api/estado-sistema-unificado")
+def estado_sistema_unificado() -> Dict[str, Any]:
+    """Estado unificado del sistema: agrega salud general, APIs, overview
+    y snapshot vivo en una sola respuesta.
+
+    Estados por fuente:
+      - ok: LIVE / LOCF_ACTIVE / saludable
+      - stale: STALE / datos con rezago > umbral
+      - congelado: CONGELADO (refresca pero no mide)
+      - desconocido: DESCONOCIDO / sin lectura válida
+      - degradado: error de lectura o DB inaccesible
+    """
+    import time as _t
+
+    now = _t.time()
+
+    # ── Salud general ────────────────────────────────────────────────
+    salud = {}
+    try:
+        salud = _rows(
+            "SELECT ts, version, fantasma, viva, aciertos, fallos, pendientes, creada_at "
+            "FROM tbl_salud_sistema ORDER BY ts DESC LIMIT 1"
+        )
+    except Exception:
+        salud = []
+
+    # ── Salud de APIs ────────────────────────────────────────────────
+    # Llamada directa a la implementación (sin TestClient: el handler
+    # anterior instanciaba 3 clientes HTTP contra sí mismo).
+    try:
+        apis = _health_apis()
+    except Exception:
+        apis = {}
+
+    # ── Overview ─────────────────────────────────────────────────────
+    # _overview_payload() ya existía: /api/overview es solo su envoltorio.
+    try:
+        ov = _jsonable(_overview_payload())
+    except Exception:
+        ov = {}
+
+    # ── Estado vivo ──────────────────────────────────────────────────
+    try:
+        ev = _leer_snapshot_miniapp()
+    except Exception:
+        ev = {}
+
+    # ── Estado global agregado ───────────────────────────────────────
+    fuentes_congeladas = 0
+    fuentes_stale = 0
+    fuentes_desconocidas = 0
+    fuentes_ok = 0
+    fuentes_desconocidas_lista: list = []
+
+    for _k, _v in apis.items():
+        if not isinstance(_v, dict):
+            continue
+        _st = str(_v.get("status", "")).upper()
+        if _st == "CONGELADO":
+            fuentes_congeladas += 1
+        elif _st == "STALE":
+            fuentes_stale += 1
+        elif _st in ("DESCONOCIDO", ""):
+            fuentes_desconocidas += 1
+            fuentes_desconocidas_lista.append(_k)
+        else:
+            fuentes_ok += 1
+
+    salud_snapshot = salud[0] if salud else {}
+    # `fantasma` viene del snapshot de salud (tbl_salud_sistema, cadencia
+    # 6 h): es el valor AGREGADO del corte, no el último precursor. Para el
+    # valor fresco se prefiere `overview` / `estado-vivo` (incluidos abajo
+    # tal cual en la respuesta).
+    fantasma_val = (
+        salud_snapshot.get("fantasma")
+        or (ov.get("fantasma", {}) or {}).get("value")
+        or None
+    )
+    # N-1 (2026-11-10): `nivel_riesgo` NUNCA sale de `viva` — `viva` es la
+    # asertividad (float 0–1) de tbl_salud_sistema, no un nivel. El nivel
+    # viene del precursor fresco (overview) o, en su defecto, del ciclo del
+    # snapshot vivo; si no hay ninguno, None (no un float disfrazado).
+    nivel_riesgo = (
+        (ov.get("fantasma", {}) or {}).get("nivel_riesgo")
+        or (ev.get("ciclo", {}) or {}).get("nivel_riesgo")
+        or None
+    )
+
+    estado_global = "ok"
+    if fuentes_desconocidas > 0 or fuentes_congeladas > 0:
+        estado_global = "congelado"
+    elif fuentes_stale > 0:
+        estado_global = "stale"
+    elif fuentes_ok == 0 and (fuentes_congeladas + fuentes_stale + fuentes_desconocidas) > 0:
+        estado_global = "degradado"
+
+    edad_s = None
+    if ev.get("edad_s") is not None:
+        edad_s = ev["edad_s"]
+    elif salud_snapshot.get("ts"):
+        try:
+            edad_s = round(now - float(salud_snapshot["ts"]), 0)
+        except (TypeError, ValueError):
+            edad_s = None
+
+    return _jsonable({
+        "ok": estado_global == "ok",
+        "estado": estado_global,
+        "edad_s": edad_s,
+        "fantasma": fantasma_val,
+        "nivel_riesgo": nivel_riesgo,
+        # La asertividad viva (float 0–1) se sirve aparte: antes ocupaba
+        # `nivel_riesgo` por el `or` de arriba (N-1).
+        "asertividad_viva": salud_snapshot.get("viva"),
+        "fuentes": {
+            "ok": fuentes_ok,
+            "stale": fuentes_stale,
+            "congelado": fuentes_congeladas,
+            "desconocido": fuentes_desconocidas,
+            "desconocidas_lista": fuentes_desconocidas_lista,
+        },
+        "salud": salud_snapshot,
+        "apis": apis,
+        "overview": ov,
+        "estado_vivo": ev,
+        "ts": now,
+    })
+
+
+@app.get("/api/reportes/export")
+def reportes_export(
+    formato: str = Query("json", pattern="^(json|csv)$"),
+    nombre: Optional[str] = Query(None),
+) -> Dict[str, Any]:
+    """Exporta veredictos del Juez en JSON o CSV para análisis externo.
+
+    Fuente: TBL_JUEZ_AUDITORIA (fase viva, en_vivo=1).
+    """
+    if not _table_exists("TBL_JUEZ_AUDITORIA"):
+        return {"present": False, "formato": formato, "rows": [], "csv": ""}
+
+    where = "WHERE fase='viva' AND COALESCE(en_vivo, 1) = 1 AND resultado IN ('ACIERTO','FALLO','FALSO_POSITIVO')"
+    params: list = []
+    if nombre:
+        where += " AND lower(bot_name) = lower(?)"
+        params.append(nombre)
+
+    rows = _rows(
+        f"""SELECT id, timestamp, bot_name, prediccion, confianza, verdad, resultado,
+                  fase, severidad, resuelto_at
+           FROM TBL_JUEZ_AUDITORIA {where}
+           ORDER BY COALESCE(resuelto_at, created_at) DESC LIMIT 5000""",
+        tuple(params),
+    )
+
+    csv_lines = [
+        "id,timestamp,bot_name,prediccion,confianza,verdad,resultado,fase,severidad,resuelto_at"
+    ]
+    for r in rows:
+        csv_lines.append(
+            ",".join(
+                str(r.get(c, "") or "").replace('"', '""') for c in [
+                    "id", "timestamp", "bot_name", "prediccion", "confianza",
+                    "verdad", "resultado", "fase", "severidad", "resuelto_at",
+                ]
+            )
+        )
+    csv_text = "\n".join(csv_lines)
+
+    return _jsonable({
+        "present": bool(rows),
+        "formato": formato,
+        "total": len(rows),
+        "rows": rows,
+        "csv": csv_text if formato == "csv" else None,
+        "caption": "Veredictos fase viva del Juez (en_vivo=1). Export: 5000 filas máx.",
+    })
 
 
 @app.exception_handler(Exception)

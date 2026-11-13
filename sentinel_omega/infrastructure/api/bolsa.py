@@ -9,12 +9,15 @@ from typing import Dict, List, Optional
 
 import pandas as pd
 from sentinel_omega.infrastructure.api._http import get_session
+from sentinel_omega.infrastructure.api._redact import sin_credenciales
+from sentinel_omega.infrastructure.api.circuit_breaker import circuit
 
 logger = logging.getLogger(__name__)
 
 TIMEOUT = 15
 
 
+@circuit("bolsa")
 def fetch_yahoo_quote(
     symbol: str,
     days: int = 365,
@@ -52,7 +55,7 @@ def fetch_yahoo_quote(
         logger.info(f"Yahoo: {symbol} — {len(df)} records")
         return df
     except Exception as e:
-        logger.error(f"Yahoo fetch failed for {symbol}: {e}")
+        logger.error(f"Yahoo fetch failed for {symbol}: {sin_credenciales(e)}")
     return None
 
 
@@ -78,7 +81,7 @@ def fetch_sector_etfs(
 
 
 def fetch_yield_spread() -> Optional[float]:
-    """Fetch 10Y-2Y Treasury yield spread (proxy via Yahoo Finance)."""
+    """Fetch 10Y-3M Treasury yield spread (proxy via Yahoo Finance)."""
     tnx = fetch_yahoo_quote("^TNX", days=5)
     twx = fetch_yahoo_quote("^IRX", days=5)
 

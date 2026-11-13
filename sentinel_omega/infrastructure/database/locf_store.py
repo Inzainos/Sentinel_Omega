@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import time
 from typing import Any, Dict, Optional
 
@@ -20,8 +21,12 @@ def _json_safe(obj: Any) -> Any:
         import pandas as pd
     except ImportError:
         np = pd = None  # type: ignore
-    if obj is None or isinstance(obj, (str, int, float, bool)):
+    if obj is None or isinstance(obj, (str, int, bool)):
         return obj
+    # T-2 (2026-11-10): NaN/+-inf -> None. Un float NaN pasaba tal cual y
+    # json.dumps lo escribia como literal `NaN` (JSON invalido en estricto).
+    if isinstance(obj, float):
+        return obj if math.isfinite(obj) else None
     if isinstance(obj, dict):
         return {str(k): _json_safe(v) for k, v in obj.items()}
     if isinstance(obj, (list, tuple)):
@@ -38,9 +43,9 @@ def _json_safe(obj: Any) -> Any:
             "data": obj.astype(object).where(obj.notna(), None).tolist(),
         }
     if np is not None and isinstance(obj, np.ndarray):
-        return obj.tolist()
+        return _json_safe(obj.tolist())
     if np is not None and isinstance(obj, (np.integer, np.floating)):
-        return obj.item()
+        return _json_safe(obj.item())
     return str(obj)
 
 
@@ -52,7 +57,7 @@ def save_locf(conn, source_key: str, payload: Dict[str, Any]) -> None:
         conn.execute(
             "INSERT OR REPLACE INTO tbl_locf_cache "
             "(source_key, payload_json, updated_at) VALUES (?, ?, ?)",
-            (source_key, json.dumps(safe, default=str), time.time()),
+            (source_key, json.dumps(safe, default=str, allow_nan=False), time.time()),
         )
         conn.commit()
     except Exception as exc:

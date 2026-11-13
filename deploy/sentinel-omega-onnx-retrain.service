@@ -12,9 +12,9 @@ Type=oneshot
 # ExecStartPost encontrara el bus. Como unit de usuario las tres sobran --- y
 # `User=` además es INVÁLIDO en el gestor de usuario, que rechaza la unit ---
 # porque ya corre como el usuario y ya tiene su bus.
-WorkingDirectory=__REPO_DIR__
-EnvironmentFile=-__REPO_DIR__/deploy/.env
-ExecStart=__REPO_DIR__/.venv/bin/python -m sentinel_omega.models.train_onnx_from_db --db-path sentinel_omega/data/SENTINEL_OMEGA_PRO.db --min-samples 50
+WorkingDirectory=/home/deamon/Sentinel_Omega
+EnvironmentFile=/home/deamon/.env.deamon
+ExecStart=/home/deamon/.venv_unified/bin/python -m sentinel_omega.models.train_onnx_from_db --db-path sentinel_omega/data/SENTINEL_OMEGA_PRO.db --min-samples 60
 ExecStartPost=/bin/sh -c 'systemctl --user is-active --quiet sentinel-omega.service && systemctl --user restart sentinel-omega.service || true'
 Nice=10
 IOSchedulingClass=best-effort

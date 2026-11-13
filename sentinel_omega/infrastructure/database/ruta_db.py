@@ -20,10 +20,13 @@ SIEMPRE con `abrir_readonly()` (URI mode=ro) — nunca escribir por aquí.
 """
 from __future__ import annotations
 
+import logging
 import sqlite3
 from pathlib import Path
 
-_PROD = Path("/home/deamon/workspaces/sentinel_omega/data/SENTINEL_OMEGA_PRO.db")
+logger = logging.getLogger(__name__)
+
+_PROD = Path("/home/deamon/Sentinel_Omega/sentinel_omega/data/SENTINEL_OMEGA_PRO.db")
 # .../sentinel_omega/infrastructure/database/ruta_db.py → package raíz
 _PKG_ROOT = Path(__file__).resolve().parents[2]
 
@@ -40,6 +43,14 @@ def ruta_db_canonica() -> Path:
             continue
         if cand.exists():
             return cand
+    # P1 (2026-11-10): nunca devolver una ruta inexistente sin avisar.
+    # El valor sigue siendo _PROD (los llamadores ya toleran DB ausente),
+    # pero queda registrado: una ruta inexistente es ausencia, no una DB.
+    logger.warning(
+        "ruta_db_canonica: ninguna DB existe (ni _PROD %s ni checkout); "
+        "se devuelve _PROD inexistente — el llamador NO debe crearla",
+        _PROD,
+    )
     return _PROD
 
 
@@ -53,6 +64,7 @@ def abrir_readonly(timeout_s: float = 5.0) -> sqlite3.Connection:
     """
     ruta = ruta_db_canonica()
     if not ruta.exists():
+        logger.warning("abrir_readonly: %s no existe, sin conexion", ruta)
         return None  # type: ignore[return-value]
     conn = sqlite3.connect(f"file:{ruta}?mode=ro", uri=True, timeout=timeout_s)
     conn.row_factory = sqlite3.Row

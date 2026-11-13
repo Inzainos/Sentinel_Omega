@@ -21,7 +21,7 @@ Reglas:
     live-only), para que el serial no cargue con un bot que el paralelo no
     entrena.
 
-Uso (desde /home/deamon/workspaces/sentinel_omega, con el .venv):
+Uso (desde /home/deamon/Sentinel_Omega/sentinel_omega, con el .venv):
     ../.venv/bin/python scripts/medicion_limpia.py serial
     ../.venv/bin/python scripts/medicion_limpia.py paralelo [--workers N]
     ../.venv/bin/python scripts/medicion_limpia.py ambos      # serial y luego paralelo
