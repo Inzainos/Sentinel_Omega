@@ -1,0 +1,11 @@
+[Unit]
+Description=Auto-fix: suite completa 1x/dia (detecta issues y (v2) dispara el fix via Concilio)
+# Suite COMPLETA 1x/dia (03:30). La cadencia 4 h usa --subset
+# (ver sentinel-omega-autofix.service).
+
+[Service]
+Type=oneshot
+ExecStart=/home/deamon/.venv_unified/bin/python /home/deamon/Sentinel_Omega/deploy/auto_fix.py --detect
+TimeoutStartSec=infinity
+StandardOutput=append:/home/deamon/Sentinel_Omega/sentinel_omega/logs/auto_fix.log
+StandardError=append:/home/deamon/Sentinel_Omega/sentinel_omega/logs/auto_fix.log

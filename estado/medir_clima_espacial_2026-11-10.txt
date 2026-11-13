@@ -1,0 +1,14 @@
+ventana: 168h mag:5.5 semilla:53 control:±15d
+Cargando clima...
+Sismos M≥5.5: 16,323
+  ... 50 pares
+
+=== RESULTADOS (control estacional) ===
+kp_prom     : n=  52 slope_ev=-0.0013 slope_ca=+0.0143 dif=-0.0157 (-0.20σ)  media_ev=2.02 media_ca=1.45 dif=+0.57 (+0.82σ)
+kp_max      : n=  52 slope_ev=-0.0013 slope_ca=+0.0139 dif=-0.0152 (-0.18σ)  media_ev=2.02 media_ca=1.81 dif=+0.21 (+0.32σ)
+bz_prom     : n=  52 slope_ev=-0.0121 slope_ca=+0.0184 dif=-0.0305 (-0.25σ)  media_ev=-0.12 media_ca=0.02 dif=-0.14 (-0.18σ)
+bz_min      : n=  52 slope_ev=-0.0121 slope_ca=+0.0122 dif=-0.0243 (-0.17σ)  media_ev=-0.12 media_ca=-2.83 dif=+2.71 (+1.70σ)
+viento_avg  : n=  52 slope_ev=+0.6678 slope_ca=+2.3821 dif=-1.7143 (-0.17σ)  media_ev=434.71 media_ca=444.48 dif=-9.77 (-0.12σ)
+viento_max  : n=  52 slope_ev=+0.6678 slope_ca=+2.6559 dif=-1.9881 (-0.19σ)  media_ev=434.71 media_ca=461.54 dif=-26.83 (-0.31σ)
+proton_flux : 0 pares (insuficiente)
+prot_dens   : n=  51 slope_ev=-0.0921 slope_ca=+0.0466 dif=-0.1388 (-0.33σ)  media_ev=6.88 media_ca=4.47 dif=+2.42 (+0.88σ)

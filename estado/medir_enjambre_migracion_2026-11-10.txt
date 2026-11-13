@@ -1,0 +1,7 @@
+ventana: 336 h · radio: 100 km · mag_min: 2.5
+semilla: 53 · época empareje: ±180 d · sep: 336 h (sin solape)
+Cargando catálogo completo...
+Eventos totales M≥2.5: 220,887
+Mainshocks M≥5.5: 16,323
+
+Solo 13 parejas: muestra insuficiente. No se inventa veredicto.

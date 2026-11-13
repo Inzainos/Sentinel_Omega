@@ -1,0 +1,6 @@
+ventana: 336 h · semilla de calma: 53 · tabla: tbl_enjambre_telemetria
+epoca de empareje: ±180 días · separacion minima: 336 h (sin solape)
+Enjambre: 1,072 intervalos, 2025-11-08 -> 2026-11-07
+eventos M4.5+ dentro del periodo: 6,635
+
+solo 1 parejas con enjambre en ambas ventanas: muestra insuficiente para concluir. No se inventa un veredicto.

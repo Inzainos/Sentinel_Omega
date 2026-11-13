@@ -1,0 +1,14 @@
+[Unit]
+Description=Sentinel Omega Dashboard Dash Plotly
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/deamon/Sentinel_Omega/sentinel_omega/infrastructure/dashboard/dash
+ExecStart=/home/deamon/.venv_unified/bin/python app.py
+Restart=on-failure
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=/home/deamon/.env.deamon
+
+[Install]
+WantedBy=default.target

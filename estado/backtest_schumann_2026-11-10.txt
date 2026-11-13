@@ -1,0 +1,97 @@
+Días Schumann en rango: 16
+  2026-10-26: act=2.68 fuente=tomsk_wpc_corte_diario
+  2026-10-27: act=2.12 fuente=tomsk_wpc_corte_diario
+  2026-10-28: act=None fuente=sin_dato_historico
+  2026-10-29: act=2.11 fuente=tomsk_wpc_corte_diario
+  2026-10-30: act=2.95 fuente=tomsk_wpc_corte_diario
+  2026-10-31: act=3.17 fuente=tomsk_wpc_corte_diario
+  2026-11-01: act=1.88 fuente=tomsk_wpc_corte_diario
+  2026-11-02: act=None fuente=sin_dato_historico
+  2026-11-03: act=None fuente=sin_dato_historico
+  2026-11-04: act=None fuente=sin_dato_historico
+  2026-11-05: act=None fuente=sin_dato_historico
+  2026-11-06: act=2.7300000000000004 fuente=resonanceone_backup
+  2026-11-07: act=3.0100000000000002 fuente=resonanceone_backup
+  2026-11-08: act=None fuente=tomsk_fallido
+  2026-11-09: act=None fuente=tomsk_fallido
+  2026-11-10: act=None fuente=tomsk_fallido
+
+Simulación con fallback=19.5%:
+  2026-10-26: original=2.68 -> simulado=2.68
+  2026-10-27: original=2.12 -> simulado=2.12
+  2026-10-28: original=None -> simulado=19.5
+  2026-10-29: original=2.11 -> simulado=2.11
+  2026-10-30: original=2.95 -> simulado=2.95
+  2026-10-31: original=3.17 -> simulado=3.17
+  2026-11-01: original=1.88 -> simulado=1.88
+  2026-11-02: original=None -> simulado=19.5
+  2026-11-03: original=None -> simulado=19.5
+  2026-11-04: original=None -> simulado=19.5
+  2026-11-05: original=None -> simulado=19.5
+  2026-11-06: original=2.7300000000000004 -> simulado=19.5
+  2026-11-07: original=3.0100000000000002 -> simulado=19.5
+  2026-11-08: original=None -> simulado=19.5
+  2026-11-09: original=None -> simulado=19.5
+  2026-11-10: original=None -> simulado=19.5
+
+Veredictos viva_real: 3328
+
+=== MOLCHAN ACTUAL (baseline) ===
+Ventanas: 3328
+Con evento: 274
+Alarmas: 943
+Detectados: 62
+Precisión: 0.0657
+Tasa base: 0.0823
+Ganancia: 0.799x
+Veredicto: SIN ganancia — alertar siempre habría rendido igual o mejor
+
+=== ANÁLISIS POR FUENTE ===
+Días con Tomsk real: 6
+Días con fallback: 5
+
+=== IMPACTO SCHUMANN POR DÍA ===
+  2026-10-05: sch=None total=45 ev=0 alar=45 det=10
+  2026-10-06: sch=None total=117 ev=9 alar=115 det=29 prec=0.252 base=0.077 gain=3.278x
+  2026-10-07: sch=None total=108 ev=0 alar=108 det=43
+  2026-10-08: sch=None total=81 ev=0 alar=81 det=60
+  2026-10-09: sch=None total=108 ev=36 alar=84 det=60 prec=0.714 base=0.333 gain=2.143x
+  2026-10-10: sch=None total=216 ev=0 alar=216 det=147
+  2026-10-11: sch=None total=117 ev=18 alar=102 det=72 prec=0.706 base=0.154 gain=4.588x
+  2026-10-12: sch=None total=117 ev=9 alar=109 det=91 prec=0.835 base=0.077 gain=10.853x
+  2026-10-13: sch=None total=117 ev=0 alar=117 det=85
+  2026-10-14: sch=None total=126 ev=18 alar=112 det=88 prec=0.786 base=0.143 gain=5.500x
+  2026-10-15: sch=None total=117 ev=0 alar=117 det=80
+  2026-10-16: sch=None total=126 ev=0 alar=126 det=94
+  2026-10-17: sch=None total=108 ev=0 alar=108 det=84
+  2026-10-18: sch=None total=49 ev=8 alar=43 det=33 prec=0.767 base=0.163 gain=4.701x
+  2026-10-19: sch=None total=88 ev=0 alar=88 det=69
+  2026-10-20: sch=None total=104 ev=24 alar=85 det=70 prec=0.824 base=0.231 gain=3.569x
+  2026-10-21: sch=None total=80 ev=32 alar=56 det=44 prec=0.786 base=0.400 gain=1.964x
+  2026-10-22: sch=None total=16 ev=0 alar=16 det=12
+  2026-10-23: sch=None total=24 ev=0 alar=24 det=18
+  2026-10-24: sch=None total=32 ev=0 alar=32 det=25
+  2026-10-25: sch=None total=64 ev=0 alar=64 det=54
+  2026-10-26: sch=2.68 total=120 ev=8 alar=113 det=94 prec=0.832 base=0.067 gain=12.478x
+  2026-10-27: sch=2.12 total=96 ev=16 alar=82 det=68 prec=0.829 base=0.167 gain=4.976x
+  2026-10-28: sch=19.5 total=24 ev=16 alar=10 det=9 prec=0.900 base=0.667 gain=1.350x
+  2026-10-29: sch=2.11 total=80 ev=8 alar=75 det=68 prec=0.907 base=0.100 gain=9.067x
+  2026-10-30: sch=2.95 total=96 ev=24 alar=73 det=61 prec=0.836 base=0.250 gain=3.342x
+  2026-10-31: sch=3.17 total=96 ev=0 alar=96 det=68
+  2026-11-01: sch=1.88 total=96 ev=0 alar=96 det=66
+  2026-11-02: sch=19.5 total=104 ev=8 alar=98 det=72 prec=0.735 base=0.077 gain=9.551x
+  2026-11-03: sch=19.5 total=104 ev=16 alar=92 det=70 prec=0.761 base=0.154 gain=4.946x
+  2026-11-04: sch=19.5 total=88 ev=0 alar=88 det=75
+  2026-11-05: sch=19.5 total=96 ev=8 alar=89 det=75 prec=0.843 base=0.083 gain=10.112x
+  2026-11-06: sch=19.5 total=40 ev=0 alar=40 det=26
+  2026-11-07: sch=19.5 total=56 ev=0 alar=56 det=33
+  2026-11-08: sch=19.5 total=112 ev=0 alar=112 det=70
+  2026-11-09: sch=19.5 total=88 ev=8 alar=82 det=62 prec=0.756 base=0.091 gain=8.317x
+  2026-11-10: sch=19.5 total=72 ev=8 alar=66 det=50 prec=0.758 base=0.111 gain=6.818x
+
+=== COMPARACIÓN TOMSK vs FALLBACK (observacional) ===
+Veredictos ya resueltos, estratificados por la fuente Schumann del día.
+No es un re-run del pipeline: es lo que los datos existentes permiten medir.
+  tomsk: n=584 con_evento=56 alarmas=117 detectados=7 prec=0.0598 base=0.0959 ganancia=0.624x veredicto=SIN ganancia — alertar siempre habría rendido igual o mejor
+  fallback: n=2744 con_evento=218 alarmas=826 detectados=55 prec=0.0666 base=0.0794 ganancia=0.838x veredicto=SIN ganancia — alertar siempre habría rendido igual o mejor
+  lift Tomsk/fallback: 0.745x (>1 = los días con Tomsk real rindieron mejor)

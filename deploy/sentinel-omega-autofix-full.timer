@@ -1,0 +1,9 @@
+[Unit]
+Description=Timer de auto-fix: suite completa 1x/dia (03:30)
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

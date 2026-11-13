@@ -1,0 +1,10 @@
+ventana: 720 h · radio volcán-sismo: 200 km · mag_min: 5.5
+semilla: 53 · época empareje: ±180 d · sep: 720 h (sin solape)
+Cargando datos SO₂...
+Registros SO₂ > 0: 2,952
+Volcanes con coordenadas y datos SO₂: 22
+Cargando sismos...
+Sismos M≥5.5: 16,323
+Sismos con volcán cercano (≤200 km) y datos SO₂: 740
+
+Solo 4 parejas: muestra insuficiente.
