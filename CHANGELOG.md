@@ -30,7 +30,21 @@ y su historia (fix A1/P0-C del 2026-11-12).
 - Conteo de tests: las cifras "1.309 tests; 2 fallan (rojos deliberados de alfa1)" eran del 2026-10-11 sin reverificar. Resultado real de la suite completa del 2026-11-13: **VER BITÁCORA**.
 - `SENTINEL_CYCLE_SECONDS` en `.env.deamon` no lo lee nadie (variable muerta); la real es `SENTINEL_CYCLE_TIMEOUT_S`.
 
-**4. Muro de 4 frentes consolidado (documentado aquí porque no tenía entrada).**
+**4. Bug real arreglado — la migración forward-only NO corría en DBs a versión
+vigente.** La suite completa (**1.375 tests recogidos**, corrida ~9 min) dio
+**1 falla**: `test_fase2_d1_escala_version.py::test_migracion_anade_la_columna_a_db_vieja`.
+Causa medida: `init_database()` corta-circuito por `SCHEMA_VERSION` devolvía la
+conexión sin ejecutar el DDL expandido, así que `_migrate_add_missing_columns`
+(nueva, D1 del 2026-11-12) **nunca corría** en una DB ya en v11 — la columna
+`escala_version` añadida sin bump de versión no migraba jamás. La DB viva la
+tiene solo porque el bundle se aplicó a mano. Fix: el corto-circuito corre
+siempre la parte barata (migración de columnas + `_asegurar_vistas_escala` +
+commit); el no-op queda para el DDL pesado. Verificado: 4/4 en el archivo,
+EXIT 0 en tests de DB relacionados, launcher reiniciado con ciclo persistido
+(25151) y 0 errores. **El test que fallaba hizo su trabajo: estaba escrito y
+nadie lo había corrido desde el commit del 2026-11-12.**
+
+**5. Muro de 4 frentes consolidado (documentado aquí porque no tenía entrada).**
 El muro financiero se midió MUERTO (0/7.830 desde el 2026-10-04,
 `estado/MURO_FINANCIERO_2026-10-04.md`) y el 2026-11-12 se retiró de
 `WALL_MEMBERS`: ahora son 4 frentes (geofísico, atmosférico, oceánico,
@@ -39,16 +53,18 @@ solar/geomagnético) y el umbral de breach sigue en ≥3/4. La columna
 Consistente verificado: código → `REPORTE.md` ("Muro de los 4 frentes") →
 digesto de Telegram ("0/4 activos").
 
-**5. Recuperado de commits (nov 10-12, rama `local/drift-2026-11-12`)** — no
+**6. Recuperado de commits (nov 10-12, rama `local/drift-2026-11-12`)** — no
 tenían entrada de CHANGELOG; se listan por commit como referencia:
 `218c065` drift 2026-11-10/12 (tuning P0-P3, fix A+B, fase 1: D9/D11/C, .gitignore)
 · `0403bab` d5: unidades autofix/dash, backfills, tests nuevos
 · `66ca676` fase2: D1 escala motor + D8 cierre API + D4 H1/H3 + 19 umbrales Schumann
 · `77e6eff` fase2: J-3 rama ALERT muerta por diseño (`padre/agent.py`)
 
-**6. Higiene:** los units nuevos (`mantenimiento-*`, `chequeo-experto`,
-`sentinel-experto*`, `vigia`) viven solo en `~/.config/systemd/user/`; copia a
-`deploy/` para provisionamiento desde repo (pendiente de commit).
+**7. Higiene:** los units nuevos (`mantenimiento-*`, `chequeo-experto`,
+`sentinel-experto*`, `vigia×2`) se copiaron a `deploy/` (commit de hoy) para
+provisionamiento desde repo; se quitó el `.gitignore.2026-11-12-d5` suelto y la
+variable muerta `SENTINEL_CYCLE_SECONDS` de `.env.deamon` (nadie la lee; la
+real es `SENTINEL_CYCLE_TIMEOUT_S`).
 
 ---
 

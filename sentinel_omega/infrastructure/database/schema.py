@@ -281,6 +281,43 @@ def _version_esquema(path: Path) -> Optional[int]:
     return int(fila[0])
 
 
+def _asegurar_vistas_escala(conn: sqlite3.Connection) -> None:
+    """D1 (2026-11-13): vistas que normalizan la escala del Fantasma al leer.
+
+    Mismo SQL que el DDL expandido (copiado VERBATIM de `schema_parts` para que
+    no derive). `CREATE VIEW IF NOT EXISTS` a propósito: no pisa una vista
+    preexistente (contrato de `test_init_no_pisa_una_vista_preexistente`).
+
+    Existe como función porque el corto-circuito por versión de
+    `init_database` NO corría el DDL expandido, y sin ella una DB a versión
+    vigente que perdiera las vistas (o la columna) no se auto-reparaba.
+    """
+    conn.execute(
+        "CREATE VIEW IF NOT EXISTS v_precursores_motor AS "
+        "SELECT id, timestamp, bz_nT, viento_km_s, protones, kp, lod_ms, "
+        "schumann_hz, schumann_activity, fase_lunar, presion_hpa, fantasma, "
+        "nivel_riesgo AS nivel_riesgo_escrito, "
+        "CASE WHEN escala_version IS NOT NULL THEN escala_version "
+        "WHEN timestamp < 1790340898 THEN 'V32' ELSE 'motor' END AS escala_version, "
+        "CASE WHEN fantasma >= 77.7 THEN 'CRITICAL' WHEN fantasma >= 28.6 "
+        "THEN 'HIGH' WHEN fantasma >= 11.5 THEN 'MODERATE' ELSE 'LOW' END "
+        "AS nivel_riesgo_motor, created_at "
+        "FROM TBL_PRECURSORES_COSMICOS"
+    )
+    conn.execute(
+        "CREATE VIEW IF NOT EXISTS v_ciclos_motor AS "
+        "SELECT id, timestamp, geo_signal, geo_confidence, geo_consensus, "
+        "fantasma, nivel_riesgo AS nivel_riesgo_escrito, "
+        "CASE WHEN escala_version IS NOT NULL THEN escala_version "
+        "WHEN timestamp < 1790340898 THEN 'V32' ELSE 'motor' END AS escala_version, "
+        "CASE WHEN fantasma >= 77.7 THEN 'CRITICAL' WHEN fantasma >= 28.6 "
+        "THEN 'HIGH' WHEN fantasma >= 11.5 THEN 'MODERATE' ELSE 'LOW' END "
+        "AS nivel_riesgo_motor, precursors_count, precursor_types, "
+        "muro_walls_active, muro_breach, alerts_dispatched, created_at "
+        "FROM TBL_CICLOS"
+    )
+
+
 def init_database(db_path: str) -> sqlite3.Connection:
     """Inicializa la DB; no-op de DDL si ya está en SCHEMA_VERSION.
 
@@ -302,6 +339,22 @@ def init_database(db_path: str) -> sqlite3.Connection:
             conn.execute("PRAGMA foreign_keys=ON")
         except sqlite3.Error as exc:  # noqa: BLE001
             logger.warning("No se pudo aplicar foreign_keys: %s", exc)
+        # Regla 5 (forward-only) TAMBIÉN en el corto-circuito por versión.
+        # Medido 2026-11-13 (auditoría): el corto-circuito devolvía la conexión
+        # sin correr `_migrate_add_missing_columns`, así que una columna
+        # añadida a EXPECTED_COLUMNS SIN bump de SCHEMA_VERSION nunca migraba
+        # — el test de D1 caía exacto ahí (columna `escala_version` ausente
+        # tras un DROP COLUMN). El "no-op de DDL" era solo para el DDL pesado;
+        # la migración de columnas es barata (un PRAGMA por tabla) e idempotente.
+        try:
+            migrar = globals().get("_migrate_add_missing_columns")
+            if callable(migrar):
+                migrar(conn)
+            _asegurar_vistas_escala(conn)
+            conn.commit()
+        except sqlite3.Error as exc:  # noqa: BLE001 — nunca tumbar la apertura
+            logger.warning("Migración forward-only en corto-circuito falló "
+                           "(no bloquea): %s", exc)
         return _con_espera(conn)
     if not callable(_init_database_expanded):
         raise RuntimeError("init_database no disponible tras expandir schema")
