@@ -19,8 +19,38 @@ import plotly.graph_objects as go
 import psutil
 
 # --- Auth ---
-DASH_USER = os.getenv("DASH_USER", "capitan")
-DASH_PASS = os.getenv("DASH_PASS", "omega2026")
+# Regla 1: secretos SOLO por entorno. Regla 7: el fallo se ve, no se
+# disimula con un default. Antes había default hardcodeado
+# (`capitan`/`omega2026`) y el dashboard servía en 0.0.0.0 con credenciales
+# de libro: cualquiera en la LAN entraba. Medido 2026-11-13 (auditoría):
+# `.env.deamon` no definía DASH_USER/DASH_PASS, así que producción corría
+# CON el default.
+# Ahora: sin variables de entorno el proceso NO arranca (systemd lo muestra
+# `failed`, que es la disciplina de este repo). La única excepción es
+# `ASISTENCIA_ENTORNO=LAB`, explícito y con aviso ruidoso.
+import sys as _sys
+import logging as _logging
+
+_logger = _logging.getLogger("dash.auth")
+DASH_USER = os.environ.get("DASH_USER", "")
+DASH_PASS = os.environ.get("DASH_PASS", "")
+
+if not DASH_USER or not DASH_PASS:
+    if os.environ.get("ASISTENCIA_ENTORNO") == "LAB":
+        DASH_USER, DASH_PASS = "lab", "lab-sentinel-omega"
+        _logger.warning(
+            "ASISTENCIA_ENTORNO=LAB: usando credenciales de LAB para el "
+            "dashboard Dash (usuario '%s'). JAMÁS en producción.", DASH_USER,
+        )
+    else:
+        _logger.error(
+            "DASH_USER/DASH_PASS no definidos: el dashboard se niega a "
+            "arrancar con credenciales por defecto (regla 1 — secretos solo "
+            "por entorno). Definirlas en el EnvironmentFile de la unidad "
+            "(.env.deamon) o exportarlas antes de `python app.py`."
+        )
+        _sys.exit(3)
+
 VALID_USERS = {DASH_USER: DASH_PASS}
 
 # --- DB path ---

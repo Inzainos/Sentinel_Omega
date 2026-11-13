@@ -1,0 +1,16 @@
+# BORRADOR (2026-11-12). User unit (systemd --user en deamonx).
+# NO instalar sin GO de Elán vía Vigía. Al desplegar: el script vive en
+# sentinel_experto/scripts/, esta unit es plantilla en deploy/.
+[Unit]
+Description=MNT-05 Temporales y disco del experto Sentinel
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/deamon/Sentinel_Omega/sentinel_experto
+ExecStart=/bin/bash /home/deamon/Sentinel_Omega/sentinel_experto/scripts/mantenimiento_temporales.sh --apply
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+# Sin [Install]: lo dispara su timer.

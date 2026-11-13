@@ -1,0 +1,14 @@
+[Unit]
+Description=Experto Sentinel — web del dashboard Mini App (:8003, loopback)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/deamon/Sentinel_Omega/sentinel_experto
+ExecStart=/home/deamon/Sentinel_Omega/sentinel_experto/.venv/bin/python -m uvicorn web:app --host 127.0.0.1 --port 8003
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

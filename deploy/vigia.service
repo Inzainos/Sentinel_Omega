@@ -1,0 +1,14 @@
+[Unit]
+Description=Vigia - dead man's switch del watchdog (sidecar Elixir)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/watchdog/sidecar/vigia
+ExecStart=/usr/bin/mix run --no-halt
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

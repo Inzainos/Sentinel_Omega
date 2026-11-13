@@ -208,10 +208,14 @@ debe hacer esa contradicción imposible de ignorar.
 ## Running tests
 
 ```bash
-# From the workspace root (/home/deamon/workspaces), with THE venv the service
-# uses --- `sentinel_omega/.venv` is an orphan without eodag/pytrends and adds
-# 4 failures of its own (measured 2026-10-08):
-.venv/bin/python -m pytest sentinel_omega/tests/ -q      # 1.309 tests, 2 red on purpose
+# From the repo root (/home/deamon/Sentinel_Omega), with THE venv the service
+# uses (`/home/deamon/Sentinel_Omega/.venv`; el `.venv` huérfano sin
+# eodag/pytrends quedó borrado el 2026-11-06):
+cd /home/deamon/Sentinel_Omega && .venv/bin/python -m pytest sentinel_omega/tests/ -q
+# CONTEO REAL: reemplazado 2026-11-13 por el resultado medido de la suite
+# completa (ver `estado/BITACORA_2026-11-13.md`): antes decía "1.309 tests, 2
+# red on purpose" desde el 2026-10-08 sin verificación; el archivo de alfa1 hoy
+# da 1 passed / 3 skipped, no 2 rojos.
 
 # Single test file:
 python -m pytest sentinel_omega/tests/test_precursor.py -v
@@ -324,7 +328,10 @@ sentinel_omega/
 │   ├── database/                # SQLite schema, repository, 125-node seed
 │   └── dashboard/               # Streamlit + Plotly dashboard (9 tabs)
 ├── data/                        # SQLite databases
-└── tests/                       # 1.309 tests (medido 2026-10-08; 2 fallan)
+└── tests/                       # ~105 archivos de test (conteo real de la
+                                 # suite completa medido el 2026-11-13 — ver
+                                 # bitácora de ese día; las cifras viejas
+                                 # "1.309 / 2 rojos" eran de 2026-10-08)
 ```
 
 ### Pipeline scripts (operational map)
@@ -603,8 +610,10 @@ Five walls of cross-correlation. Breach when >= 3 walls active:
 
 ## Branch
 
-Rama viva: **`local/recuperacion-datos-2026-09`** (verificado contra `git branch --show-current`
-el 2026-10-08; sin push). `claude/sentinel-omega-architecture-j3c2kn` fue la rama de
+Rama viva: **`local/drift-2026-11-12`** (verificado contra `git branch --show-current`
+el 2026-11-13). Remotos: `origin` = `Inzainos/workspaces` (histórico),
+`origin-sentinel` = `Inzainos/Sentinel_Omega` (repo dedicado — se empuja aquí).
+`claude/sentinel-omega-architecture-j3c2kn` fue la rama de
 los PR de Claude y este archivo la citaba como si siguiera siendo la de trabajo.
 Nunca push a `main`.
 

@@ -192,10 +192,13 @@ canónica bajo `data/`.
 ## Comandos
 
 ```bash
-# Tests — SIEMPRE desde la raíz del workspace, nunca desde dentro de sentinel_omega/
-.venv/bin/python -m pytest sentinel_omega/tests/ -q   # 1.309 tests; 2 fallan (rojos deliberados de alfa1, 2026-10-11)
-# El intérprete importa: `sentinel_omega/.venv` es un resto huérfano sin eodag
-# ni pytrends y da 4 fallos que son suyos. El servicio usa `workspaces/.venv`.
+# Tests — desde la raíz del repo (/home/deamon/Sentinel_Omega) con EL venv que
+# usa el servicio (/home/deamon/Sentinel_Omega/.venv). El `.venv` huérfano sin
+# eodag/pytrends se borró el 2026-11-06: ya no existe la trampa de los dos venv.
+cd /home/deamon/Sentinel_Omega && .venv/bin/python -m pytest sentinel_omega/tests/ -q
+# Conteo y resultado REALES: ver `estado/BITACORA_2026-11-13.md`. Las cifras
+# anteriores ("1.309 tests; 2 fallan") eran del 2026-10-11 y no se habían
+# vuelto a verificar: el archivo de alfa1 hoy da 1 passed / 3 skipped, no 2 rojos.
 
 # Un solo archivo
 python -m pytest sentinel_omega/tests/test_firmas.py -v
@@ -245,8 +248,10 @@ con los conteos del sistema.
 
 ## Git y PRs
 
-- Rama de desarrollo: **`local/recuperacion-datos-2026-09`** (verificado el 2026-10-08 contra
-  `git branch --show-current`; sin push). La vieja
+- Rama de desarrollo: **`local/drift-2026-11-12`** (verificado el 2026-11-13 contra
+  `git branch --show-current`). Repos remotos: `origin` = `Inzainos/workspaces`
+  (histórico compartido) y **`origin-sentinel` = `Inzainos/Sentinel_Omega`**
+  (repo dedicado, donde se empuja esta rama). La vieja
   `claude/sentinel-omega-architecture-j3c2kn` era la de los PR y figuraba aquí como
   si fuera la viva.
 - No pushear a otra rama sin permiso explícito.
@@ -273,25 +278,30 @@ Todos los servicios viven en `~/.config/systemd/user/` y se gestionan con
 | `sentinel-omega-dashboard-api.service` | FastAPI API | activo | 8787 |
 | `sentinel-omega-dashboard-dash.service` | **Dash/Plotly principal** (login + 17 tabs) | activo | **8128** |
 | `sentinel-omega-dashboard-web.service` | React/Vite frontend (legacy) | activo | 5173 |
+| `sentinel-omega-dashboard.service` | Streamlit legacy (acceso remoto Safari/iPad) | activo | 8510 |
 | `sentinel-omega-watchdog.service` | Watchdog red + agente | activo | — |
-| `sentinel-omega-autofix.service` | Auto-detección de issues | oneshot | — |
-| `sentinel-omega-rutinas.service` | Reportes, Juez, Telegram | oneshot | — |
-| `sentinel-omega-mantenimiento.service` | Disciplina + barrido | oneshot | — |
-| `sentinel-omega-onnx-retrain.service` | Retrain ONNX semanal | oneshot | — |
-| `sentinel-omega-rebuild-watch.service` | Vigila rebuild | oneshot | — |
-| `vigia-sentinel.service` | Sidecar Elixir (mix no instalado) | inactivo | — |
+| `sentinel-experto.service` | Despachador de la cola → Telegram (bot @SismoBio_Bot) | activo | — |
+| `sentinel-experto-web.service` | Web del dashboard Mini App (loopback) | activo | 8003 |
+| `vigia-sentinel.service` | Dead man's switch del ciclo (sidecar Elixir) | activo | — |
+| `vigia.service` | Dead man's switch del watchdog (sidecar Elixir) | activo | — |
+| `sentinel-omega-scheduler.service` | Scheduler viejo (DUPLICA el launcher) | **disabled** | — |
+| oneshot periódicos | `autofix` (4h) / `autofix-full` (diario 03:30) / `rutinas` (15min) / `mantenimiento` (00:00) / `onnx-retrain` (dom 03:00) / `rebuild-watch` | timers activos | — |
+| **familia `mantenimiento-*`** (timers activos) | `cola-alertas` (5min) · `salud-servicios` (5min) · `digest-snapshot` (1h) · `modelos` (1h) · `tuneles` (15min) · `watchdog` (15min) · `dead-letter` (00:45) · `logs` (01:00) · `disco-db` (01:30) · `concilio-ocioso` (02:00) · `temporales` (dom 02:00) · `respaldos` (dom 03:00) | timers activos | — |
+| `chequeo-experto` | Chequeo del despachador (diario 00:30) | timer activo | — |
 
-**Dashboard principal:** 8128 (Dash/Plotly, autenticación básica via `DASH_USER`/`DASH_PASS`).  
-**Legacy:** 5173 (React/Vite) y 8510 (Streamlit) — comentados/deshabilitados.
+**Dashboard principal:** 8128 (Dash/Plotly). Credenciales por entorno
+(`DASH_USER`/`DASH_PASS`, sin defaults: regla 1). **Los tres dashboards están
+enabled y running** — el React (5173) y el Streamlit (8510) son legacy pero
+activos (8510 da acceso remoto desde Safari/iPad).
 
 **Correcciones aplicadas 2026-10-28:**
 - `WorkingDirectory` corregido de `%h/workspaces/sentinel_omega/sentinel_omega` y `__REPO_DIR__` a `/home/deamon/workspaces/sentinel_omega` en todos los `.service`
 - `ExecStart` corregido de `%h/workspaces/.venv/bin/python` a `/home/deamon/workspaces/sentinel_omega/.venv/bin/python`
 - `dashboard-web.service`: `WorkingDirectory` corregido a `sentinel_omega/infrastructure/dashboard/web` y `PATH` agregado para encontrar `npm`
 - `dashboard-dash.service`: nuevo servicio para Dash/Plotly en 8128 (`WorkingDirectory=/home/deamon/Sentinel_Omega/sentinel_omega/infrastructure/dashboard/dash`)
-- `watchdog.service`: `EnvironmentFile` corregido a `deploy/.env`; `WATCHDOG_RESTORE_UNITS` actualizado a `sentinel-omega,sentinel-omega-dashboard-api,sentinel-omega-dashboard-dash`; `WATCHDOG_STREAMLIT_CHECK=0` para no vigilar Streamlit legacy (puerto 8510, inexistente)
+- `watchdog.service`: `EnvironmentFile` es **`/home/deamon/.env.deamon`** (NO `deploy/.env`: verificado contra el unit instalado 2026-11-13 — el `WATCHDOG_STREAMLIT_CHECK=0` que vive en `deploy/.env` **no aplica**, el chequeo por puerto del Streamlit sigue activo en vivo). `WATCHDOG_RESTORE_UNITS` por defecto = `sentinel-omega,sentinel-omega-dashboard-api,sentinel-omega-dashboard-dash` (Dash 8128 principal). Además vigila red + heartbeat + `medic:8788` + `health:8789`
 - `vigia-sentinel.service`: `ExecStart` reemplazado por `/bin/true` (mix/Elixir no disponible en WSL)
-- **`sentinel-omega-dashboard-api.service`**: `EnvironmentFile` corregido de `%h/workspaces/deploy/.env` a `/home/deamon/workspaces/sentinel_omega/deploy/.env`
+- **`sentinel-omega-dashboard-api.service`**: `EnvironmentFile` es `/home/deamon/.env.deamon` (verificado contra el unit instalado 2026-11-13; las correcciones de rutas antiguas apuntaban a `deploy/.env`, que ya no se usa)
 - **`eskdalemuir-procesa.service`**: `ExecStart` corregido de `/home/deamon/workspaces/.venv/bin/python` a `/home/deamon/workspaces/sentinel_omega/.venv/bin/python`
 
 ```bash
@@ -303,31 +313,42 @@ systemctl --user status <servicio>
 journalctl --user -u <servicio> --no-pager -n 20
 ```
 
-## 2. Timeout de Alfa-2 / ESA Sentinel (eodag) — CRÍTICO
+## 2. Timeout del ciclo y de Alfa-2 (eodag) — CRÍTICO
 
 **El módulo `esa_sentinel.py` usa `eodag` (EODataAccessGateway) SIN timeout.** La llamada
 a `dag.search()` puede colgarse indefinidamente esperando respuesta de la API de
-ESA Copernicus, bloqueando todo el ciclo de Sentinel Omega antes de llegar a
-`insert_ciclo()`. Medido: el ciclo se queda atascado tras "Fetched 71 GOES
-electron flux records" y nunca persiste en `TBL_CICLOS`.
+ESA Copernicus, bloqueando todo el ciclo antes de llegar a `insert_ciclo()`.
 
-**Fix aplicado 2026-10-28** en `sentinel_omega/infrastructure/pipeline/layer_runners.py`:
-- Se agregó `import signal` y una clase `Alfa2Timeout` con handler de `SIGALRM`
-- `signal.alarm(60)` se activa justo antes de `fetch_alfa2_data()` y se desactiva en `finally`
-- Si eodag tarda más de 60s, se lanza `Alfa2Timeout`, se captura en el `except Exception`
-  del bloque satellite, y el ciclo continúa sin bloquearse
+**Historial de fixes (cada uno medido, no supuesto):**
+
+| Fecha | Mecanismo | Por qué salió |
+|---|---|---|
+| 2026-10-28 | `signal.alarm(60)` + `Alfa2Timeout` (SIGALRM) | primer corte; chocaba con el manejo de señales del launcher |
+| 2026-11-09 | thread con `join(60s)` → **180s** (6-9 llamadas API secuenciales × 15-20 s por zona × 3 zonas) | 60 s era menos que el tiempo típico de las búsquedas |
+| 2026-11-12 (A1/P0-C) | **corte REAL del ciclo**: el ciclo corre en un worker daemon; el hilo principal hace `join(CYCLE_TIMEOUT_S)`; si el worker sigue vivo → heartbeat `cycle_timeout` + `sys.exit(1)` para que systemd reinicie limpio | el `threading.Event` anterior solo detectaba el timeout A POSTERIORI: 133 "Cycle failed" medidos (80×300 s + 53×420 s) y un `run_cycle()` colgado dejaba el launcher atascado para siempre |
+
+**Estado vigente (verificado contra el código 2026-11-13):**
+- `layer_runners.py` (bloque satellite): thread daemon + `join(timeout=180)`. Si eodag cuelga, el ciclo sigue sin datos satelitales (`Alfa-2 timeout (180s)` en el log). **Ya no hay `Alfa2Timeout` ni `signal.alarm` en Alfa-2.**
+- `launcher.py`: `CYCLE_TIMEOUT_S = int(os.environ.get("SENTINEL_CYCLE_TIMEOUT_S", "420"))`. El worker corre dentro de `SentinelRepository.defer_commit()` (una transacción por ciclo, Turno 2). Al expirar: escribe `phase: "cycle_timeout"` en el heartbeat y sale con código 1 (`Restart=always` lo levanta). **El worker es daemon: sus fds/locks se liberan con el proceso.**
+- Heartbeat con fases: `cycle_start` / `cycle_end` / `cycle_timeout` en `data/sentinel_omega_heartbeat.json`.
 
 ```python
-signal.signal(signal.SIGALRM, _alfa2_timeout_handler)
-signal.alarm(60)
-try:
-    alfa2_data = self.pipeline.fetch_alfa2_data(zones=zonas)
-finally:
-    signal.alarm(0)
+# launcher.py — corte real del ciclo (resumen)
+_worker.start()
+_worker.join(timeout=CYCLE_TIMEOUT_S)
+if _worker.is_alive():
+    # heartbeat phase=cycle_timeout + sys.exit(1) → systemd reinicia
+    ...
+    sys.exit(1)
 ```
 
-**Verificar:** tras cada ciclo, confirmar que `TBL_CICLOS` tenga un registro nuevo
-(`SELECT id, timestamp FROM TBL_CICLOS ORDER BY id DESC LIMIT 1`).
+**Endpoints de verificación (levantados por el launcher, loopback):**
+- `GET :8789/health` — heartbeat + `heartbeat_age_s` + `uptime_s` + `status`.
+- `GET :8788/` — salud médica del sistema (watchdog).
+
+**Verificar tras cada ciclo:** `TBL_CICLOS` con registro nuevo
+(`SELECT id, timestamp FROM TBL_CICLOS ORDER BY id DESC LIMIT 1` — cada ~5 min,
+ciclo de 300 s) y `journalctl --user -u sentinel-omega | grep -c "Cycle failed\|CYCLE TIMEOUT"`.
 
 ## 3. Concilio (consensus-expert-agent) — agente de uso general local
 

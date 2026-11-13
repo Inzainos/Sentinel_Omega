@@ -1,0 +1,11 @@
+# BORRADOR (2026-11-12). User timer (systemd --user en deamonx).
+# NO instalar sin GO de Elán vía Vigía. Horario de §19 (REVISION_EXPERTO_2026-11-12.md).
+[Unit]
+Description=Timer MNT-09 dead letter (diario 00:45)
+
+[Timer]
+OnCalendar=00:45
+Persistent=true
+
+[Install]
+WantedBy=timers.target

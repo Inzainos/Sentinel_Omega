@@ -1,0 +1,14 @@
+[Unit]
+Description=Vigía Sentinel Omega - dead man's switch del ciclo (sidecar Elixir)
+After=network-online.target sentinel-omega.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/deamon/Sentinel_Omega/sentinel_omega/sidecar/vigia_sentinel
+ExecStart=/usr/bin/mix run --no-halt
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

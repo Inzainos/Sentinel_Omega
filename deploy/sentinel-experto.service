@@ -1,0 +1,21 @@
+[Unit]
+Description=Experto Sentinel — despachador inmortal de la voz de Sentinel (sólo envía, bot @SismoBio_Bot)
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+WorkingDirectory=/home/deamon/Sentinel_Omega/sentinel_experto
+EnvironmentFile=/home/deamon/Sentinel_Omega/sentinel_experto/.env
+ExecStart=/home/deamon/Sentinel_Omega/sentinel_experto/.venv/bin/python experto.py
+# El despachador NO muere con los experimentos del agente — pero si el
+# propio proceso revienta, vuelve solo. Exit 78 = CONFIG (token/identidad
+# equivocada): systemd no debe revivirlo en bucle ciego — el estado
+# `failed` se VE, que es la lección del crash-loop del 26-oct.
+Restart=on-failure
+RestartSec=15
+
+[Install]
+WantedBy=default.target

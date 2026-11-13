@@ -1,5 +1,57 @@
 # Changelog — Sentinel Omega
 
+## [Unreleased] - 2026-11-13 — Auditoría doc↔código + cierre de deuda de documentación
+
+### Lo que se hizo hoy (auditoría, todo verificado contra código/servicios/BD)
+
+**1. Seguridad — credenciales del dashboard Dash (8128).** `dash/app.py` tenía
+`DASH_USER`/`DASH_PASS` con **defaults hardcodeados** (`capitan`/`omega2026`) y
+servía en `0.0.0.0:8128` con `/home/deamon/.env.deamon` sin definir esas
+variables: producción corría con credenciales de libro (regla 1 rota). Fix:
+sin entorno → el proceso **no arranca** (`sys.exit(3)`, systemd lo muestra
+`failed`); única excepción `ASISTENCIA_ENTORNO=LAB` con aviso ruidoso.
+Verificado en vivo: sin creds → 401; default viejo → 401; credenciales nuevas
+(definidas en `.env.deamon`) → 200.
+
+**2. Timeout del ciclo — la doc decía SIGALRM, el código NO.** AGENTS.md §2
+documentaba `signal.alarm(60)` + `Alfa2Timeout`; eso salió el 2026-11-09. El
+estado real, verificado contra `launcher.py` y `layer_runners.py`:
+Alfa-2 thread con `join(180s)`; el ciclo entero corre en un **worker daemon**
+cortado por el hilo principal con `join(CYCLE_TIMEOUT_S)` (`SENTINEL_CYCLE_TIMEOUT_S`,
+default 420) → heartbeat `phase: cycle_timeout` + `sys.exit(1)` para que
+systemd reinicie limpio. Medido: 0 `Cycle failed|CYCLE TIMEOUT` desde el
+reinicio 03:15, ~285 ciclos/24h. AGENTS.md reescrito con el mecanismo vigente
+y su historia (fix A1/P0-C del 2026-11-12).
+
+**3. Documentación puesta al día con lo medido:**
+- Rama viva: `local/recuperacion-datos-2026-09` → **`local/drift-2026-11-12`** (AGENTS.md, CLAUDE.md).
+- Servicios: faltaban `sentinel-experto`, `sentinel-experto-web` (:8003), `vigia.service`, la familia de timers `mantenimiento-*` (12) + `chequeo-experto`; `vigia-sentinel` figuraba "inactivo" y está **activo**; los tres dashboards (8128/5173/8510) están **enabled y running**, no "comentados".
+- `EnvironmentFile`: todos los servicios cargan `/home/deamon/.env.deamon` — el `deploy/.env` con `WATCHDOG_STREAMLIT_CHECK=0` **no aplica** (el chequeo de puerto del Streamlit sigue activo en vivo).
+- Conteo de tests: las cifras "1.309 tests; 2 fallan (rojos deliberados de alfa1)" eran del 2026-10-11 sin reverificar. Resultado real de la suite completa del 2026-11-13: **VER BITÁCORA**.
+- `SENTINEL_CYCLE_SECONDS` en `.env.deamon` no lo lee nadie (variable muerta); la real es `SENTINEL_CYCLE_TIMEOUT_S`.
+
+**4. Muro de 4 frentes consolidado (documentado aquí porque no tenía entrada).**
+El muro financiero se midió MUERTO (0/7.830 desde el 2026-10-04,
+`estado/MURO_FINANCIERO_2026-10-04.md`) y el 2026-11-12 se retiró de
+`WALL_MEMBERS`: ahora son 4 frentes (geofísico, atmosférico, oceánico,
+solar/geomagnético) y el umbral de breach sigue en ≥3/4. La columna
+`wall_financiero` de `TBL_MURO_EVENTOS` se CONSERVA (esquema forward-only).
+Consistente verificado: código → `REPORTE.md` ("Muro de los 4 frentes") →
+digesto de Telegram ("0/4 activos").
+
+**5. Recuperado de commits (nov 10-12, rama `local/drift-2026-11-12`)** — no
+tenían entrada de CHANGELOG; se listan por commit como referencia:
+`218c065` drift 2026-11-10/12 (tuning P0-P3, fix A+B, fase 1: D9/D11/C, .gitignore)
+· `0403bab` d5: unidades autofix/dash, backfills, tests nuevos
+· `66ca676` fase2: D1 escala motor + D8 cierre API + D4 H1/H3 + 19 umbrales Schumann
+· `77e6eff` fase2: J-3 rama ALERT muerta por diseño (`padre/agent.py`)
+
+**6. Higiene:** los units nuevos (`mantenimiento-*`, `chequeo-experto`,
+`sentinel-experto*`, `vigia`) viven solo en `~/.config/systemd/user/`; copia a
+`deploy/` para provisionamiento desde repo (pendiente de commit).
+
+---
+
 ## [Unreleased] - 2026-11-07 — Experimento Dirigido P0 + Fixes Pipeline + Dashboard Unificado
 
 ### Experimento Dirigido (P0) — Testing precursores alternativos (siguiendo `docs/EXPERIMENTO_DIRIGIDO.md`)
