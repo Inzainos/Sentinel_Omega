@@ -17,6 +17,9 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 
+from sentinel_omega.core.precursor.risk_calculator import (
+    RISK_THRESHOLDS,
+)
 from sentinel_omega.core.precursor.precursor_types import (
     PrecursorType,
     PRECURSOR_DISPLAY_NAMES,
@@ -34,6 +37,44 @@ from sentinel_omega.core.precursor.precursor_types import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Ítem 19 / D4 (2026-11-12): la regla Schumann está DESHABILITADA por
+# diseño mientras no haya una fuente de FRECUENCIA calibrada en vivo
+# (schumann_hz es 100 % NULL en TBL_PRECURSORES_COSMICOS; la actividad
+# retomó el 2026-11-13 vía ResonanceOne pero sin Hz). Los umbrales de
+# abajo YA están recalibrados a la escala real 0–100 (medidos
+# 2026-11-12, DB viva modo ro): actividad limpia post-2026-10-09
+# (n=928, sin la era fabricada 21.46 ni el brote 19.5 del 6–7 nov):
+# p50=1.88, p90=3.17, p95=3.17, p98=3.88, p99=4.45, máx=4.46;
+# máx WPC histórico observado 8.3 %; clamp del fallback ≤10.
+#   bonus ≥5.0: por encima del p99 limpio (4.45), por debajo del máx
+#     WPC (8.3): solo dispara en actividad extrema (0/928 en la
+#     muestra limpia — es un umbral de extremo, no de rutina).
+#   gate <8.0: la actividad sola solo dispara at/por encima del máx
+#     WPC histórico. Los viejos 150/200 eran ~18×/~24× ese máx.
+# Para re-activar: poner SCHUMANN_RULE_ENABLED = True cuando exista
+# Hz calibrada (Eskdalemuir es la candidata) y re-medir los umbrales.
+SCHUMANN_RULE_ENABLED = False
+SCHUMANN_ACTIVITY_BONUS = 5.0
+SCHUMANN_ACTIVITY_EXTREMA = 8.0
+_SCHUMANN_RULE_DISABLED_CALLS = 0
+
+
+def _schumann_rule_disabled() -> bool:
+    """Gate explícito de la regla Schumann (ítem 19): True mientras
+    esté deshabilitada. Cuenta las llamadas y loguea UNA vez por
+    proceso para que el silencio sea distinguible de 'no hay anomalía'."""
+    global _SCHUMANN_RULE_DISABLED_CALLS
+    if not SCHUMANN_RULE_ENABLED:
+        _SCHUMANN_RULE_DISABLED_CALLS += 1
+        if _SCHUMANN_RULE_DISABLED_CALLS == 1:
+            logger.warning(
+                "Regla Schumann DESHABILITADA (D4/ítem 19): sin Hz calibrada; "
+                "_scan_schumann y _scan_precipitacion retornan []"
+            )
+        return True
+    return False
+
 
 # P2 2026-11-10: TSUNAMI solo cuenta sismos dentro de esta ventana (días).
 # Un M7 de hace un mes no es un precursor de hoy.
@@ -259,11 +300,11 @@ class PrecursorScanner:
 
         FANTASMA figuraba en WALL_MEMBERS[WALL_GEOFISICO] desde siempre, pero
         ningún scanner lo emitía: el índice central del sistema nunca llegaba
-        al Muro. Umbral HIGH (>=15) según los niveles documentados
-        (LOW<5, MODERATE 5-15, HIGH 15-30, CRITICAL>=30); sobre 3.380 ciclos
-        reales MODERATE es el estado normal (77%) y HIGH aparece en el 22.8%,
-        así que discrimina. Se elige HIGH y no CRITICAL por la pérdida
-        asimétrica (miss = 10x).
+        al Muro. Umbral HIGH del MOTOR (RISK_THRESHOLDS, D1 2026-11-12:
+        LOW<11.5, MODERATE 11.5-28.6, HIGH 28.6-77.7, CRITICAL>=77.7;
+        percentiles 50/90/98 recalibrados 2026-09-25). Se elige HIGH y no
+        CRITICAL por la pérdida asimétrica (miss = 10x). (Las cifras 77% /
+        22.8% del comentario anterior eran de la era V32 y ya no aplican.)
         """
         if risk is None:
             return []
@@ -274,7 +315,7 @@ class PrecursorScanner:
             valor = float(valor)
         except (TypeError, ValueError):
             return []
-        if valor < 15.0:
+        if valor < RISK_THRESHOLDS["HIGH"]:
             return []
         nivel = str(getattr(risk, "risk_level", "") or "")
         return [PrecursorDetection(
@@ -283,7 +324,7 @@ class PrecursorScanner:
             station="global",
             lat=None,
             lon=None,
-            confidence=0.85 if valor >= 30.0 else 0.7,
+            confidence=0.85 if valor >= RISK_THRESHOLDS["CRITICAL"] else 0.7,
             values={"fantasma": round(valor, 2), "nivel_riesgo": nivel},
         )]
 
@@ -370,21 +411,26 @@ class PrecursorScanner:
         # RUTA SILENCIADA POR DISEÑO desde el retiro del Hz (2026-10-09):
         # el fetcher ya no fabrica `7,83 + actividad×0,02`, así que
         # `schumann_hz` llega None SIEMPRE y esta detección no dispara.
-        # Se mantiene la rama completa para el día que exista una fuente de
-        # FRECUENCIA calibrada en vivo (Eskdalemuir es la candidata); mientras
-        # tanto, inventar un umbral sobre la ACTIVIDAD sin su distribución
-        # medida sería numerología (regla 8).
+        # Además está DESHABILITADA explícitamente (SCHUMANN_RULE_ENABLED =
+        # False, ítem 19): el gate de abajo es la marca, no el silencio
+        # implícito del hz None. Se mantiene la rama completa para el día
+        # que exista una fuente de FRECUENCIA calibrada en vivo (Eskdalemuir
+        # es la candidata). Umbrales recalibrados a la escala real 0–100
+        # (ver constantes SCHUMANN_ACTIVITY_* arriba; regla 8: calibrar,
+        # no adivinar).
+        if _schumann_rule_disabled():
+            return []
         if schumann_hz is None:
             return []
 
         deviation = abs(schumann_hz - 7.83)
-        if deviation < 0.5 and (schumann_pct is None or schumann_pct < 150):
+        if deviation < 0.5 and (schumann_pct is None or schumann_pct < SCHUMANN_ACTIVITY_EXTREMA):
             return []
 
         confidence = 0.5
         if deviation >= 1.0:
             confidence += 0.2
-        if schumann_pct is not None and schumann_pct >= 200:
+        if schumann_pct is not None and schumann_pct >= SCHUMANN_ACTIVITY_BONUS:
             confidence += 0.15
 
         return [PrecursorDetection(
@@ -708,7 +754,11 @@ class PrecursorScanner:
         fórmula usaba la «frecuencia» fabricada como escala modal, o sea
         que medía una recta sobre un conteo de píxeles. Con hz=None SIEMPRE
         retorna vacío; se mantiene por si una frecuencia calibrada vuelve.
+        Además está DESHABILITADA explícitamente (SCHUMANN_RULE_ENABLED =
+        False, ítem 19): mismo gate que _scan_schumann.
         """
+        if _schumann_rule_disabled():
+            return []
         if schumann_hz is None or schumann_hz <= 0:
             return []
 

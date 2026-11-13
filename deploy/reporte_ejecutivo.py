@@ -28,6 +28,22 @@ try:
 except ImportError:
     obtener_estadisticas_aciertos = None
 
+# D1 2026-11-12: los umbrales del Fantasma se LEEN del motor
+# (risk_calculator.py), no se copian. El fallback solo existe para
+# que el reporte diario no muera si el paquete no carga; sus valores
+# SON los del motor, y el fallo se anuncia en stderr.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+try:
+    from sentinel_omega.core.precursor.risk_calculator import (
+        RISK_THRESHOLDS as _UMB,
+    )
+except Exception:  # noqa: BLE001 — el reporte sale igual
+    import sys as _sys
+    print("(aviso) reporte_ejecutivo: no se pudo importar el motor; "
+          "se usan los umbrales 11.5/28.6/77.7 escritos a mano",
+          file=_sys.stderr)
+    _UMB = {"LOW": 0.0, "MODERATE": 11.5, "HIGH": 28.6, "CRITICAL": 77.7}
+
 DB_DEFAULT = str(
     Path(__file__).parent.parent / "sentinel_omega" / "data" / "SENTINEL_OMEGA_PRO.db"
 )
@@ -65,17 +81,91 @@ def _num(x, dec=1):
 
 
 def _estado_ejecutivo(fantasma, muros, breach, mejor_match):
-    """Semáforo ejecutivo VERDE→ROJO + clasificación operativa."""
+    """Semáforo ejecutivo VERDE→ROJO + clasificación operativa.
+
+    D1 2026-11-12: los cortes son las bandas del MOTOR (11.5/28.6/
+    77.7), leídas de RISK_THRESHOLDS. La semántica se conserva:
+    ROJO = breach + CRITICAL, NARANJA = breach o HIGH + firma,
+    AMARILLO = MODERATE o firma, AZUL = fantasma > 0 o muros sin
+    breach/firma, VERDE = todo en rango base. Los viejos 30/15/5 eran
+    V32. (Reparación 2026-11-12: la inserción del helper H3 había
+    partido esta función y dejado la cola AZUL/VERDE como código muerto
+    tras el `return` del helper; la cola vuelve aquí, donde estaba.)"""
     sim = mejor_match or 0.0
-    if breach and (fantasma or 0) >= 30:
+    if breach and (fantasma or 0) >= _UMB["CRITICAL"]:
         return "ROJO", "ESCALAMIENTO"
-    if breach or ((fantasma or 0) >= 15 and sim >= 0.85):
+    if breach or ((fantasma or 0) >= _UMB["HIGH"] and sim >= 0.85):
         return "NARANJA", "PRE-ESCALAMIENTO"
-    if (fantasma or 0) >= 5 or sim >= 0.80:
+    if (fantasma or 0) >= _UMB["MODERATE"] or sim >= 0.80:
         return "AMARILLO", "VIGILANCIA REFORZADA"
     if (fantasma or 0) > 0 or muros:
         return "AZUL", "OBSERVACIÓN"
     return "VERDE", "ESTABLE"
+
+
+def _cobertura_schumann_lineas(conn, ahora) -> list:
+    """Cobertura Schumann (D4 H3, 2026-11-12): días con dato vs NULL, último
+    día con dato, fuente del corte. Fail-soft: si la tabla no existe, lo dice
+    en vez de romper el reporte. NULL es ausencia, no cero (D4)."""
+    from datetime import timedelta as _td
+    hoy = (ahora - _td(hours=6)).strftime("%Y-%m-%d")
+    try:
+        tot, con_dato, sin_dato = conn.execute(
+            "SELECT COUNT(*), "
+            "SUM(CASE WHEN actividad IS NOT NULL THEN 1 ELSE 0 END), "
+            "SUM(CASE WHEN actividad IS NULL THEN 1 ELSE 0 END) "
+            "FROM tbl_schumann_diario"
+        ).fetchone()
+        ult = conn.execute(
+            "SELECT fecha, actividad, fuente FROM tbl_schumann_diario "
+            "WHERE actividad IS NOT NULL ORDER BY fecha DESC LIMIT 1"
+        ).fetchone()
+        ult_corte = conn.execute(
+            "SELECT fecha, actividad, fuente FROM tbl_schumann_diario "
+            "ORDER BY fecha DESC LIMIT 1"
+        ).fetchone()
+        n_hz, n_prec = conn.execute(
+            "SELECT SUM(CASE WHEN schumann_hz IS NOT NULL THEN 1 ELSE 0 END), "
+            "COUNT(*) FROM TBL_PRECURSORES_COSMICOS"
+        ).fetchone()
+    except Exception:
+        return ["## 📻 Cobertura Schumann",
+                "",
+                "Sin datos de cobertura (tabla `tbl_schumann_diario` no "
+                "disponible en esta DB).",
+                ""]
+    tot = tot or 0
+    con_dato = con_dato or 0
+    sin_dato = sin_dato or 0
+    out = ["## 📻 Cobertura Schumann — días con dato vs NULL (D4)", ""]
+    out.append(
+        f"Corte diario (`tbl_schumann_diario`): **{tot} días** registrados, "
+        f"**{con_dato} con dato** / **{sin_dato} NULL**.")
+    if ult:
+        try:
+            dias_sin = (datetime.strptime(hoy, "%Y-%m-%d").date()
+                        - datetime.strptime(ult[0], "%Y-%m-%d").date()).days
+        except Exception:
+            dias_sin = None
+        estado = ("🟢 LIVE — el corte es de hoy" if ult[0] == hoy else
+                  f"sin dato desde hace {dias_sin} días" if dias_sin is not None else
+                  "sin dato reciente")
+        out.append(
+            f"Último día con dato: **{ult[0]}** ({ult[1]:.2f} %, fuente "
+            f"`{ult[2] or '—'}`) — {estado}.")
+    else:
+        out.append("Último día con dato: — (ningún día con dato registrado).")
+    if ult_corte:
+        act = f"{ult_corte[1]:.2f} %" if ult_corte[1] is not None else "NULL"
+        out.append(
+            f"Último corte registrado: **{ult_corte[0]}** (fuente "
+            f"`{ult_corte[2] or '—'}`, actividad {act}).")
+    out.append(
+        f"`schumann_hz` en `TBL_PRECURSORES_COSMICOS`: **{n_hz or 0} no-nulos "
+        f"de {n_prec or 0}** — la regla Schumann sigue deshabilitada "
+        f"(ítem 19) mientras no haya Hz calibrada.")
+    out.append("")
+    return out
 
 
 def _percentil(valor, serie):
@@ -286,7 +376,7 @@ def generar(db_path: str = DB_DEFAULT, out_path: str = OUT_DEFAULT) -> str:
     criterios = []
     if breach:
         criterios.append("convergencia multi-dominio (breach)")
-    if (fant or 0) >= 15:
+    if (fant or 0) >= _UMB["HIGH"]:
         criterios.append("fantasma elevado")
     if (mejor_sim or 0) >= 0.85:
         criterios.append("firma consolidada con parecido alto")
@@ -301,7 +391,7 @@ def generar(db_path: str = DB_DEFAULT, out_path: str = OUT_DEFAULT) -> str:
     A("")
     A("| Indicador | Valor | Umbral | Estado | Lectura rápida |")
     A("|---|---:|---:|---|---|")
-    A(f"| Fantasma | {_num(fant)} | 30 (CRITICAL) | {color} | {nivel_txt} |")
+    A(f"| Fantasma | {_num(fant)} | {_UMB['CRITICAL']:.0f} (CRITICAL) | {color} | {nivel_txt} |")
     conf = actual[6] if actual else None
     A(f"| Consenso de bots | {_pct(conf, 0)} | 60% | "
       f"{'activo' if (conf or 0) >= 0.6 else 'sin consenso'} | "
@@ -323,15 +413,15 @@ def generar(db_path: str = DB_DEFAULT, out_path: str = OUT_DEFAULT) -> str:
     A("")
     A("### Diagnóstico consolidado")
     A("")
-    if breach and (fant or 0) >= 15:
+    if breach and (fant or 0) >= _UMB["HIGH"]:
         diag = ("El sistema está en CONVERGENCIA: varios dominios físicos "
                 "alterados a la vez con fantasma elevado y la memoria "
                 "reconociendo patrones de víspera.")
-    elif (fant or 0) < 5 and matches:
+    elif (fant or 0) < _UMB["MODERATE"] and matches:
         diag = ("El sistema está en FASE DE CARGA SILENCIOSA: el fantasma es "
                 "bajo pero la memoria reconoce firmas de víspera — el patrón "
                 "Silent Trigger (la calma carga).")
-    elif (fant or 0) >= 5:
+    elif (fant or 0) >= _UMB["MODERATE"]:
         diag = ("El sistema está en FASE DE CARGA: actividad por encima del "
                 "fondo sin convergencia crítica completa.")
     else:
@@ -342,11 +432,11 @@ def generar(db_path: str = DB_DEFAULT, out_path: str = OUT_DEFAULT) -> str:
     A("")
     A("| Nivel | Condición mínima | Significado | Acción sugerida |")
     A("|---|---|---|---|")
-    A("| Verde | Fantasma <5, sin muros, sin firmas | Rutina normal | Monitoreo base |")
-    A("| Azul | Fantasma <5 con detecciones aisladas | Variación leve | Seguimiento ampliado |")
-    A("| Amarillo | Fantasma 5–15 o firma ≥80% | Precarga o carga silenciosa | Vigilancia reforzada |")
-    A("| Naranja | Breach 3/5 o fantasma ≥15 + firma ≥85% | Convergencia parcial entre dominios | Revisión manual inmediata |")
-    A("| Rojo | Breach + fantasma ≥30 | Convergencia crítica multisistema | Escalamiento interno |")
+    A(f"| Verde | Fantasma <{_UMB['MODERATE']:.0f}, sin muros, sin firmas | Rutina normal | Monitoreo base |")
+    A(f"| Azul | Fantasma <{_UMB['MODERATE']:.0f} con detecciones aisladas | Variación leve | Seguimiento ampliado |")
+    A(f"| Amarillo | Fantasma {_UMB['MODERATE']:.0f}–{_UMB['HIGH']:.0f} o firma ≥80% | Precarga o carga silenciosa | Vigilancia reforzada |")
+    A(f"| Naranja | Breach 3/5 o fantasma ≥{_UMB['HIGH']:.0f} + firma ≥85% | Convergencia parcial entre dominios | Revisión manual inmediata |")
+    A(f"| Rojo | Breach + fantasma ≥{_UMB['CRITICAL']:.0f} | Convergencia crítica multisistema | Escalamiento interno |")
     A("")
     A("---")
     A("")
@@ -867,6 +957,8 @@ def generar(db_path: str = DB_DEFAULT, out_path: str = OUT_DEFAULT) -> str:
     A("| Omega | Bot del ritmo cósmico: luna, Schumann, envolvente solar |")
     A("| Sesgo causal | Diferencia entre competencia in-sample y real |")
     A("")
+    for _ln in _cobertura_schumann_lineas(conn, ahora):
+        A(_ln)
     A("### Checklist de publicación")
     A("")
     A(f"- [x] Datos ingestados completos ({total_ciclos:,} ciclos)")

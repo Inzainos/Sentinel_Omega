@@ -122,6 +122,14 @@ def barrido_diario(db_path: str, dias_full: int = DIAS_RETENCION_FULL,
         stats["dias_resumidos"] += 1
 
     # ── 2) Botar ciclos de calma anteriores al corte ──
+    # D1 2026-11-12: la purga `fantasma < 15` de TBL_PRECURSORES_COSMICOS
+    # (abajo, dry-run y DELETE) SE DEJA como regla de RETENCIÓN y NO se
+    # sube al HIGH del motor (28.6): cambiarla borraría casi todo el
+    # historial que hoy sobrevive (la purga es lo que mantiene vivos
+    # solo los ciclos con fantasma ≥15) y NO fue ordenado. El 15 aquí
+    # ya no es un umbral de riesgo: es el corte de retención heredado
+    # de V32, documentado como tal. (Los ciclos, en cambio, se purgan
+    # por nivel_riesgo HIGH/CRITICAL, que sí es escala del motor.)
     if dry_run:
         # En seco se cuenta lo que SE BOTARÍA con el mismo WHERE del DELETE.
         stats["ciclos_botados"] = conn.execute(
@@ -357,12 +365,18 @@ def _patron_omega(f: dict) -> str:
     kp = max(f.get("kp_max", 0) or 0, f.get("kp_max_72h", 0) or 0)
     bz = f.get("bz_min", 0) or 0
     prot = f.get("proton_max", 0) or 0
-    sch = f.get("schumann_mean", 0) or 0
+    # D4 H1 (2026-11-12): None es "sin dato", no 0. El viejo
+    # `f.get("schumann_mean", 0) or 0` convertía la ausencia en una
+    # medición de 0. La guarda de abajo conserva el comportamiento
+    # (None nunca dispara SCHUMANN, igual que 0.0) sin borrar la
+    # distinción: el único consumidor es construir_correlaciones_omega,
+    # que solo usa la presencia del flag en el patrón, no el valor.
+    sch = f.get("schumann_mean")
     if kp >= 4 or bz <= -8 or prot >= 100:
         flags.append("SOLAR")
     elif kp < 2 and abs(bz) < 3:
         flags.append("CALMA")
-    if sch > 8.5:
+    if sch is not None and sch > 8.5:
         flags.append("SCHUMANN")  # resonancia Schumann elevada
     if (f.get("sismo_count_win", 0) or 0) >= 3 or \
        (f.get("sismo_max_mag_win", 0) or 0) >= 4.5:

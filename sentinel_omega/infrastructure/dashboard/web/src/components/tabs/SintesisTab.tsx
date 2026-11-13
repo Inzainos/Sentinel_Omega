@@ -126,7 +126,9 @@ export function SintesisTab() {
                 <span className="mono texto-micro texto-desvanecido">· GOES clase {d.goes_clase}</span>
               )}
             </div>
-            <EscalaRiesgo valor={fantasma} max={50} umbrales={[15, 30]} />
+            {/* D1 2026-11-12: escala del motor (11.5/28.6/77.7); max 100 para
+            que el CRITICAL (77.7) no se recorte en la barra. */}
+            <EscalaRiesgo valor={fantasma} max={100} umbrales={[28.6, 77.7]} />
             <p className="texto-meta texto-desvanecido">
               {ciclo.geo_signal
                 ? `Señal geodinámica: ${ciclo.geo_signal}${ciclo.geo_confidence != null ? ` · confianza ${(Number(ciclo.geo_confidence) * 100).toFixed(0)}%` : ""}`

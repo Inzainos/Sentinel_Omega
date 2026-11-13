@@ -27,11 +27,16 @@ interface FantasmaChartProps {
   showLegend?: boolean;
 }
 
+// D1 2026-11-12: inicios de banda de la escala del MOTOR
+// (risk_calculator.py: LOW 0.0, MODERATE 11.5, HIGH 28.6, CRITICAL
+// 77.7; percentiles 50/90/98). Los viejos 10/30/60/100 eran una
+// cuarta escala distinta. Ningún llamador pasa `thresholds`
+// (PrincipalTab usa los defaults), así que estos SON los que se ven.
 const DEFAULT_THRESHOLDS = [
-  { value: 10, color: "#10b981", label: "LOW" },
-  { value: 30, color: "#ffc107", label: "MODERATE" },
-  { value: 60, color: "#ff9100", label: "HIGH" },
-  { value: 100, color: "#ff1744", label: "CRITICAL" },
+  { value: 0.0, color: "#10b981", label: "LOW" },
+  { value: 11.5, color: "#ffc107", label: "MODERATE" },
+  { value: 28.6, color: "#ff9100", label: "HIGH" },
+  { value: 77.7, color: "#ff1744", label: "CRITICAL" },
 ];
 
 export function FantasmaChart({

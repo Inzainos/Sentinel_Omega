@@ -1536,6 +1536,16 @@ def reset_vigilante() -> None:
 
 
 def _nivel_from_fantasma(fantasma: Any) -> str:
+    """Fallback de 3 niveles (alto/medio/bajo) SOLO cuando el snapshot
+
+    no trae `nivel` ni `nivel_riesgo` (D1 2026-11-12). Es vocabulario
+    de PRESENTACIÓN para el texto de Telegram, DISTINTO de la escala
+    del motor (11.5/28.6/77.7): NO se unifica a LOW/MODERATE/HIGH/
+    CRITICAL porque cambiaría el texto que reciben los usuarios y los
+    cortes 6/3 no son bandas de riesgo sino de legibilidad. El
+    llamador (:1027) prefiere siempre el nivel ya clasificado del
+    snapshot; este fallback solo cubre snapshots viejos sin nivel.
+    """
     try:
         v = float(fantasma)
     except (TypeError, ValueError):

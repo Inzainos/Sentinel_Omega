@@ -44,6 +44,92 @@ _src = _src.replace(
     "schumann_hz     REAL DEFAULT 7.83,",
     "schumann_hz     REAL,",
 )
+
+# Parche en carga (D1, 2026-11-12): las dos tablas que guardan el nivel de
+# riesgo del Fantasma ganan `escala_version TEXT` (NULL = fila anterior a la
+# columna; la vista deriva la era por timestamp, frontera 2026-09-25
+# 12:54:58 UTC, medida). La DB viva recibe la columna con ALTER TABLE en la
+# parada del paso 6 (bundle d1_escala_version.sql, verificado en scratch
+# contra copia real); esto corrige los checkouts nuevos. Forward-only: las
+# DBs ya creadas conservan su esquema hasta que _migrate_add_missing_columns
+# (EXPECTED_COLUMNS, abajo) añada la columna. Los textos son los del DDL
+# expandido, con su alineado (verificado por expansión: el DDL usa 8/12
+# espacios, no 1).
+_src = _src.replace(
+    "    fantasma        REAL    DEFAULT 0.0,\n    nivel_riesgo    TEXT    DEFAULT 'LOW',\n    created_at",
+    "    fantasma        REAL    DEFAULT 0.0,\n    nivel_riesgo    TEXT    DEFAULT 'LOW',\n    escala_version  TEXT,\n    created_at",
+).replace(
+    "    fantasma            REAL    DEFAULT 0.0,\n    nivel_riesgo        TEXT    DEFAULT 'LOW',\n    precursors_count",
+    "    fantasma            REAL    DEFAULT 0.0,\n    nivel_riesgo        TEXT    DEFAULT 'LOW',\n    escala_version      TEXT,\n    precursors_count",
+)
+# D1 (2026-11-12): EXPECTED_COLUMNS — migración forward-only para DBs ya
+# creadas (regla 5 del repo). TBL_PRECURSORES_COSMICOS no estaba en
+# EXPECTED_COLUMNS; se añade. La columna se añade con ALTER si falta, sin
+# backfill (NULL = era anterior, la vista deriva por timestamp).
+_src = _src.replace(
+    '    "TBL_CICLOS": {\n        "precursor_types": "TEXT DEFAULT \'[]\'",\n    },',
+    '    "TBL_PRECURSORES_COSMICOS": {\n        "escala_version": "TEXT",\n    },\n    "TBL_CICLOS": {\n        "precursor_types": "TEXT DEFAULT \'[]\'",\n        "escala_version": "TEXT",\n    },',
+)
+# D1 (2026-11-12): vistas que normalizan la escala del Fantasma al leer
+# (misma definición que d1_escala_version.sql; el coordinador aplica ese
+# bundle a la DB viva en la parada del paso 6). DROP+CREATE como las vistas
+# de arriba: init_database es idempotente. OJO: v_resumen_diario_motor NO va
+# aquí: tbl_resumen_diario la crea mantenimiento.py, no el DDL, así que en
+# una DB nueva la vista fallaría y rompería init_database; esa vista solo
+# existe en el bundle del paso 6.
+_src = _src.replace(
+    """    conn.execute("DROP VIEW IF EXISTS v_firma_eventos_json")
+    conn.execute(
+        "CREATE VIEW v_firma_eventos_json AS "
+        "SELECT firma_id, json_group_array(evento_ref) AS eventos_json, "
+        "MIN(ts_evento) AS ts_primero, COUNT(*) AS n_eventos "
+        "FROM tbl_firma_eventos GROUP BY firma_id"
+    )""",
+    """    conn.execute("DROP VIEW IF EXISTS v_firma_eventos_json")
+    conn.execute(
+        "CREATE VIEW v_firma_eventos_json AS "
+        "SELECT firma_id, json_group_array(evento_ref) AS eventos_json, "
+        "MIN(ts_evento) AS ts_primero, COUNT(*) AS n_eventos "
+        "FROM tbl_firma_eventos GROUP BY firma_id"
+    )
+
+    # D1 (2026-11-12): vistas que normalizan la escala del Fantasma al leer
+    # (misma definición que d1_escala_version.sql; el coordinador aplica ese
+    # bundle a la DB viva en la parada del paso 6). CREATE VIEW IF NOT
+    # EXISTS — a propósito NO DROP+CREATE como viva_real: la versión del
+    # bundle selecciona además `en_vivo`, columna que la DB viva tiene pero
+    # el DDL canónico NO define (drift preexistente, ver reporte FASE 2: la
+    # columna llegó a la DB viva por fuera del DDL). Con IF NOT EXISTS, en
+    # la DB viva manda la versión del bundle (con en_vivo) y aquí no se
+    # pisa; en una DB nueva se crea la versión sin en_vivo. OJO:
+    # v_resumen_diario_motor NO va aquí: tbl_resumen_diario la crea
+    # mantenimiento.py, no el DDL, así que en una DB nueva la vista fallaría
+    # y rompería init_database; esa vista solo existe en el bundle del paso 6.
+    conn.execute(
+        "CREATE VIEW IF NOT EXISTS v_precursores_motor AS "
+        "SELECT id, timestamp, bz_nT, viento_km_s, protones, kp, lod_ms, "
+        "schumann_hz, schumann_activity, fase_lunar, presion_hpa, fantasma, "
+        "nivel_riesgo AS nivel_riesgo_escrito, "
+        "CASE WHEN escala_version IS NOT NULL THEN escala_version "
+        "WHEN timestamp < 1790340898 THEN 'V32' ELSE 'motor' END AS escala_version, "
+        "CASE WHEN fantasma >= 77.7 THEN 'CRITICAL' WHEN fantasma >= 28.6 "
+        "THEN 'HIGH' WHEN fantasma >= 11.5 THEN 'MODERATE' ELSE 'LOW' END "
+        "AS nivel_riesgo_motor, created_at "
+        "FROM TBL_PRECURSORES_COSMICOS"
+    )
+    conn.execute(
+        "CREATE VIEW IF NOT EXISTS v_ciclos_motor AS "
+        "SELECT id, timestamp, geo_signal, geo_confidence, geo_consensus, "
+        "fantasma, nivel_riesgo AS nivel_riesgo_escrito, "
+        "CASE WHEN escala_version IS NOT NULL THEN escala_version "
+        "WHEN timestamp < 1790340898 THEN 'V32' ELSE 'motor' END AS escala_version, "
+        "CASE WHEN fantasma >= 77.7 THEN 'CRITICAL' WHEN fantasma >= 28.6 "
+        "THEN 'HIGH' WHEN fantasma >= 11.5 THEN 'MODERATE' ELSE 'LOW' END "
+        "AS nivel_riesgo_motor, precursors_count, precursor_types, "
+        "muro_walls_active, muro_breach, alerts_dispatched, created_at "
+        "FROM TBL_CICLOS"
+    )""",
+)
 exec(compile(_src, "schema_expanded", "exec"), globals())
 
 

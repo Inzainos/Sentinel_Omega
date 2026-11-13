@@ -231,14 +231,15 @@ export function Metrica({
 /* ========================================================================== */
 
 /**
- * Fantasma sobre su escala real (0–15–30–50+), con los umbrales dibujados.
+ * Fantasma sobre su escala real (0–11.5–28.6–77.7+), con los umbrales
+ * dibujados. Escala del MOTOR (D1 2026-11-12: percentiles 50/90/98).
  * Un gauge de aguja no dice dónde están los cortes; esto sí. Es la diferencia
- * entre "8.11" y "8.11, y el siguiente umbral está en 15".
+ * entre "8.11" y "8.11, y el siguiente umbral está en 28.6".
  */
 export function EscalaRiesgo({
   valor,
-  max = 50,
-  umbrales = [15, 30],
+  max = 100,
+  umbrales = [28.6, 77.7],
 }: {
   valor: number | null | undefined;
   max?: number;
@@ -247,7 +248,7 @@ export function EscalaRiesgo({
   const v = esAusente(valor) ? null : Number(valor);
   const pct = v === null ? 0 : Math.max(0, Math.min(100, (v / max) * 100));
   const nivel: Nivel =
-    v === null ? "DESCONOCIDO" : v >= 30 ? "CRITICAL" : v >= 15 ? "HIGH" : v >= 5 ? "MODERATE" : "LOW";
+    v === null ? "DESCONOCIDO" : v >= 77.7 ? "CRITICAL" : v >= 28.6 ? "HIGH" : v >= 11.5 ? "MODERATE" : "LOW";
 
   return (
     <div className="space-y-1.5">
@@ -256,28 +257,28 @@ export function EscalaRiesgo({
         <div className="absolute inset-y-0 left-0 w-full opacity-[0.28]">
           <div
             className="absolute inset-y-0 left-0"
-            style={{ width: `${(5 / max) * 100}%`, background: "var(--color-calma)" }}
+            style={{ width: `${(11.5 / max) * 100}%`, background: "var(--color-calma)" }}
           />
           <div
             className="absolute inset-y-0"
             style={{
-              left: `${(5 / max) * 100}%`,
-              width: `${((15 - 5) / max) * 100}%`,
+              left: `${(11.5 / max) * 100}%`,
+              width: `${((28.6 - 11.5) / max) * 100}%`,
               background: "var(--color-atencion)",
             }}
           />
           <div
             className="absolute inset-y-0"
             style={{
-              left: `${(15 / max) * 100}%`,
-              width: `${((30 - 15) / max) * 100}%`,
+              left: `${(28.6 / max) * 100}%`,
+              width: `${((77.7 - 28.6) / max) * 100}%`,
               background: "var(--color-aviso)",
             }}
           />
           <div
             className="absolute inset-y-0"
             style={{
-              left: `${(30 / max) * 100}%`,
+              left: `${(77.7 / max) * 100}%`,
               right: 0,
               background: "var(--color-critico)",
             }}

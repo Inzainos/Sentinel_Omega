@@ -11,8 +11,8 @@ import json
 import logging
 import os
 import sqlite3
+import contextlib
 import sys
-import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -32,6 +32,7 @@ for _p in (_REPO_ROOT,):
         sys.path.insert(0, str(_p))
 
 from sentinel_omega.infrastructure.database.repository import SentinelRepository
+from sentinel_omega.core.precursor.risk_calculator import classify_risk
 
 from sentinel_omega.infrastructure.dashboard.ask_faq import answer_question
 from sentinel_omega.core.precursor.baseline import evaluar_veredictos
@@ -90,6 +91,80 @@ app.add_middleware(
 )
 
 
+class _CursorRO:
+    """Cursor ro que ES DUEÑO de su conexión (7/D8, 2026-11-12).
+
+    El diseño anterior cacheaba UNA conexión por hilo (thread-local) y no
+    la cerraba jamás: ni método close, ni lifespan, ni middleware. El FD de
+    la DB/-wal/-shm quedaba pinzado toda la vida del proceso y el API
+    competía con el launcher por el checkpoint del WAL.
+
+    ¿Por qué no un middleware que cierre por request? Porque los endpoints
+    `def` corren en hilos del threadpool de Starlette y el `finally` del
+    middleware corre en el hilo del event loop: un close() ahí cerraría el
+    thread-local del hilo equivocado (vacío) y la conexión del worker
+    seguiría abierta. La primera versión de este parche hacía justo eso;
+    se descartó tras la revisión (ver reporte FASE 2).
+
+    Aquí no hay caché: cada consulta abre su propia conexión ro
+    (`_nueva_conexion`) y este cursor la cierra cuando se cierra el cursor
+    (close(), `with`, o el GC al perder la última referencia — CPython lo
+    ejecuta al salir del endpoint). Los llamadores solo usan
+    fetchall/fetchone/iteración, así que el duck-type basta. El coste es
+    un sqlite3.connect por consulta (~0.1-0.5 ms), despreciable frente al
+    trabajo del endpoint.
+    """
+
+    def __init__(self, conn: sqlite3.Connection, sql: str, params: tuple = ()):
+        self._conn = conn
+        self._cur = None
+        try:
+            self._cur = conn.execute(sql, params)
+        except Exception:
+            try:
+                conn.close()
+            except Exception:
+                pass
+            self._conn = None
+            raise
+        self.description = self._cur.description
+
+    def fetchall(self):
+        return self._cur.fetchall()
+
+    def fetchone(self):
+        return self._cur.fetchone()
+
+    def fetchmany(self, size=None):
+        return self._cur.fetchmany() if size is None else self._cur.fetchmany(size)
+
+    def __iter__(self):
+        return iter(self._cur)
+
+    def close(self) -> None:
+        cur, conn = getattr(self, "_cur", None), getattr(self, "_conn", None)
+        self._cur = self._conn = None
+        for obj in (cur, conn):
+            if obj is not None:
+                try:
+                    obj.close()
+                except Exception:
+                    pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
+        return False
+
+    def __del__(self):
+        try:
+            self.close()
+        except Exception:
+            pass
+
+
 class ReadOnlyRepository(SentinelRepository):
     """SentinelRepository with forced URI read-only connections."""
 
@@ -97,14 +172,16 @@ class ReadOnlyRepository(SentinelRepository):
         # No llamamos a super().__init__ para evitar que get_connection()
         # dispare init_database() y bloquee la DB.
         self._db_path = db_path or str(DB_PATH)
-        self._tls = threading.local()
 
-    @property
-    def _conn_safe(self) -> sqlite3.Connection:
-        if not hasattr(self, "_tls"):
-            self._tls = threading.local()
-        if getattr(self._tls, "conn", None) is not None:
-            return self._tls.conn
+    def _nueva_conexion(self) -> sqlite3.Connection:
+        """Una conexión ro NUEVA por llamada (7/D8).
+
+        Nunca se cachea: quien la pide es dueño de cerrarla (con
+        `contextlib.closing` o vía `_CursorRO`). Las tres funciones
+        externas que recibían la conexión cacheada (cargar_pesos,
+        pesos_por_merito, resumen_nulo_lag) ahora la abren y la cierran
+        en su propio `with`.
+        """
         conn = sqlite3.connect(
             DB_URI,
             uri=True,
@@ -118,13 +195,12 @@ class ReadOnlyRepository(SentinelRepository):
             conn.row_factory = sqlite3.Row
         except Exception:
             pass
-        self._tls.conn = conn
         return conn
 
-    def _ro_execute(self, sql: str, params: tuple = ()) -> sqlite3.Cursor:
-        return self._conn_safe.execute(sql, params)
+    def _ro_execute(self, sql: str, params: tuple = ()) -> _CursorRO:
+        return _CursorRO(self._nueva_conexion(), sql, params)
 
-    def _execute(self, sql: str, params: tuple = ()) -> sqlite3.Cursor:
+    def _execute(self, sql: str, params: tuple = ()) -> _CursorRO:
         return self._ro_execute(sql, params)
 
     def get_aciertos(self, limit: int = 100) -> Dict[str, Any]:
@@ -220,7 +296,7 @@ class ReadOnlyRepository(SentinelRepository):
             p
             for p in precs
             if str(p.get("nivel_riesgo", "")).upper() in ("HIGH", "CRITICAL")
-            or float(p.get("fantasma") or 0) >= 5.0
+            or classify_risk(float(p.get("fantasma") or 0)) in ("HIGH", "CRITICAL")
         ]
         # Fulguraciones GOES (Alfa-2): M/X class en últimas 24 h = alerta potencial
         # (Las alertas FULGURACION_X/M se despachan por Telegram vía consensus_vigilante;
@@ -294,21 +370,24 @@ def _columnas(tabla: str) -> set:
     diseno: lo que no se midio se ve distinto de lo que midio cero).
     """
     try:
-        return {r[1] for r in _repo._ro_execute(f"PRAGMA table_info({tabla})")}
+        with contextlib.closing(_repo._ro_execute(f"PRAGMA table_info({tabla})")) as cur:
+            return {r[1] for r in cur}
     except Exception:
         return set()
 
 
 def _rows(sql: str, params: tuple = ()) -> List[Dict[str, Any]]:
     try:
-        return [dict(r) for r in _repo._ro_execute(sql, params).fetchall()]
+        with contextlib.closing(_repo._ro_execute(sql, params)) as cur:
+            return [dict(r) for r in cur.fetchall()]
     except Exception:
         return []
 
 
 def _scalar(sql: str, params: tuple = (), default: Any = 0) -> Any:
     try:
-        row = _repo._ro_execute(sql, params).fetchone()
+        with contextlib.closing(_repo._ro_execute(sql, params)) as cur:
+            row = cur.fetchone()
         if row is None:
             return default
         return row[0]
@@ -628,8 +707,9 @@ def bots() -> Dict[str, Any]:
         _juez = getattr(_cfg, "juez", None)
         _por_merito = bool(getattr(_juez, "peso_por_merito", False))
         _minimo = int(getattr(_juez, "minimo_ventanas", 50))
-        _p = cargar_pesos(_repo._conn_safe, por_merito=_por_merito,
-                          minimo_ventanas=_minimo)
+        with contextlib.closing(_repo._nueva_conexion()) as _con:
+            _p = cargar_pesos(_con, por_merito=_por_merito,
+                              minimo_ventanas=_minimo)
         _aplic = int(_p.pop("_meritos_aplicados", 0) or 0)
         _comp = int(_p.pop("_competencias_aplicadas", 0) or 0)
         voto = {str(k).lower(): float(v) for k, v in _p.items()}
@@ -732,10 +812,12 @@ def bots() -> Dict[str, Any]:
     # refuerza cada ventana, así que los bots se pegan al techo (8 de 9 el
     # 2026-09-25) y dejan de informar. `merito` mide lo otro: cuánto ahorra cada
     # bot frente a callarse siempre, en la moneda del Juez.
-    # `_conn_safe` es una @property, asi que SIN parentesis ya devuelve la
-    # conexion. (Nota para quien venga: el 2026-10-08 lo confundi con un metodo,
-    # le puse `()` «arreglandolo» y lo rompi --- `sqlite3.Connection` es
-    # invocable y el error sale raro, `function takes exactly 1 argument`.)
+    # 7/D8 2026-11-12: la conexión ya NO es una @property cacheada:
+    # cada llamada abre la suya (`_nueva_conexion`) y la cierra en el
+    # `with`. (El 2026-10-08 la vieja `_conn_safe` se confundió con un
+    # método, se le puso `()` "arreglándola" y se rompió --- `sqlite3.
+    # Connection` es invocable y el error sale raro, `function takes
+    # exactly 1 argument`. Ese comentario vivía aquí; la lección queda.)
     #
     # El merito sale VACIO, y no por un fallo: `pesos_por_merito` pide >=50
     # ventanas de `fase='viva'` por bot y hay 36, asi que devuelve `{}` con todo
@@ -747,7 +829,8 @@ def bots() -> Dict[str, Any]:
     merito_error = None
     try:
         from sentinel_omega.core.juez.pesos import pesos_por_merito
-        merito = pesos_por_merito(_repo._conn_safe)
+        with contextlib.closing(_repo._nueva_conexion()) as _con:
+            merito = pesos_por_merito(_con)
     except Exception as e:  # noqa: BLE001 — el endpoint responde igual
         merito_error = f"{type(e).__name__}: {e}"
         logger.warning("No se pudo calcular el merito de los bots: %s",
@@ -1174,7 +1257,8 @@ def lag() -> Dict[str, Any]:
     # La consulta vive en `signature_engine` porque este mismo número lo pintan
     # cuatro superficies; cuatro copias serían cuatro sitios donde volver a
     # desincronizarse, que es justo lo que pasó hoy.
-    _res = resumen_nulo_lag(_repo._conn_safe)
+    with contextlib.closing(_repo._nueva_conexion()) as _con:
+        _res = resumen_nulo_lag(_con)
     nulo: Dict[str, Any] = {"disponible": False}
     if _res is not None:
         nulo = dict(_res)

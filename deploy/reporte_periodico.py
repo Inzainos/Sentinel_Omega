@@ -27,6 +27,12 @@ from sentinel_omega.core.precursor.baseline import (
     BLANCO_REPORTE_VENTANA_H,
     evaluar_veredictos,
 )
+# D1 2026-11-12: los umbrales del Fantasma se LEEN del motor, no se
+# copian. (generar_reporte.py ya lo hacía así; este archivo no.)
+from sentinel_omega.core.precursor.risk_calculator import (
+    RISK_THRESHOLDS as _UMB,
+    classify_risk,
+)
 
 DB_DEFAULT = str(RAIZ / "sentinel_omega" / "data" / "SENTINEL_OMEGA_PRO.db")
 DIR_ESTADO = RAIZ / "estado"
@@ -165,16 +171,77 @@ def _barra(pct: float, ancho: int = 10) -> str:
 
 
 def _nivel_fantasma(v) -> str:
-    """Etiqueta de riesgo del índice Fantasma (TITAN V32)."""
+    """Etiqueta de riesgo del índice Fantasma (escala del MOTOR,
+    D1 2026-11-12: 11.5/28.6/77.7, percentiles 50/90/98)."""
     if v is None:
         return "—"
-    if v < 5:
-        return "LOW · calma"
-    if v < 15:
-        return "MODERATE · atención"
-    if v < 30:
-        return "HIGH · avisar"
-    return "CRITICAL · protocolo"
+    nivel = classify_risk(float(v))
+    return {"LOW": "LOW · calma", "MODERATE": "MODERATE · atención",
+            "HIGH": "HIGH · avisar",
+            "CRITICAL": "CRITICAL · protocolo"}[nivel]
+
+def _seccion_cobertura_schumann(conn) -> list:
+    """Cobertura Schumann (D4 H3, 2026-11-12): días con dato vs NULL, último
+    día con dato, fuente del corte. Fail-soft: si la tabla no existe, lo dice
+    en vez de romper el reporte. NULL es ausencia, no cero (D4)."""
+    hoy = _ahora_mx().strftime("%Y-%m-%d")
+    try:
+        tot, con_dato, sin_dato = conn.execute(
+            "SELECT COUNT(*), "
+            "SUM(CASE WHEN actividad IS NOT NULL THEN 1 ELSE 0 END), "
+            "SUM(CASE WHEN actividad IS NULL THEN 1 ELSE 0 END) "
+            "FROM tbl_schumann_diario"
+        ).fetchone()
+        ult = conn.execute(
+            "SELECT fecha, actividad, fuente FROM tbl_schumann_diario "
+            "WHERE actividad IS NOT NULL ORDER BY fecha DESC LIMIT 1"
+        ).fetchone()
+        ult_corte = conn.execute(
+            "SELECT fecha, actividad, fuente FROM tbl_schumann_diario "
+            "ORDER BY fecha DESC LIMIT 1"
+        ).fetchone()
+        n_hz, n_prec = conn.execute(
+            "SELECT SUM(CASE WHEN schumann_hz IS NOT NULL THEN 1 ELSE 0 END), "
+            "COUNT(*) FROM TBL_PRECURSORES_COSMICOS"
+        ).fetchone()
+    except Exception:
+        return ["## 📻 Cobertura Schumann", "",
+                "Sin datos de cobertura (tabla `tbl_schumann_diario` no "
+                "disponible en esta DB).", ""]
+    tot = tot or 0
+    con_dato = con_dato or 0
+    sin_dato = sin_dato or 0
+    lineas = ["## 📻 Cobertura Schumann — días con dato vs NULL (D4)", ""]
+    lineas.append(
+        f"Corte diario (`tbl_schumann_diario`): **{tot} días** registrados, "
+        f"**{con_dato} con dato** / **{sin_dato} NULL**.")
+    if ult:
+        try:
+            dias_sin = (datetime.strptime(hoy, "%Y-%m-%d").date()
+                        - datetime.strptime(ult[0], "%Y-%m-%d").date()).days
+        except Exception:
+            dias_sin = None
+        estado = ("🟢 LIVE — el corte es de hoy" if ult[0] == hoy else
+                  f"sin dato desde hace {dias_sin} días" if dias_sin is not None else
+                  "sin dato reciente")
+        lineas.append(
+            f"Último día con dato: **{ult[0]}** ({ult[1]:.2f} %, fuente "
+            f"`{ult[2] or '—'}`) — {estado}.")
+    else:
+        lineas.append("Último día con dato: — (ningún día con dato registrado).")
+    if ult_corte:
+        act = f"{ult_corte[1]:.2f} %" if ult_corte[1] is not None else "NULL"
+        lineas.append(
+            f"Último corte registrado: **{ult_corte[0]}** (fuente "
+            f"`{ult_corte[2] or '—'}`, actividad {act}).")
+    lineas.append(
+        f"`schumann_hz` en `TBL_PRECURSORES_COSMICOS`: **{n_hz or 0} no-nulos "
+        f"de {n_prec or 0}** — la regla Schumann sigue deshabilitada "
+        f"(ítem 19) mientras no haya Hz calibrada.")
+    lineas.append("")
+    return lineas
+
+
 
 
 # Glosario común: hace el reporte legible para cualquiera, no solo para el operador.
@@ -182,8 +249,9 @@ GLOSARIO = f"""## ℹ️ Cómo leer este reporte
 
 - **Fantasma** — índice de *riesgo cósmico* (TITAN V32). **No es un sismo**: mide la
   tensión del sistema combinando campo magnético (Bz), viento solar, resonancia
-  Schumann, presión y más. Escala: **LOW <5** (calma) · **MODERATE 5–15** (atención)
-  · **HIGH 15–30** (avisar) · **CRITICAL ≥30** (protocolo).
+  Schumann, presión y más. Escala del MOTOR (D1 2026-11-12, percentiles
+  50/90/98): **LOW <11.5** (calma) · **MODERATE 11.5–28.6** (atención)
+  · **HIGH 28.6–77.7** (avisar) · **CRITICAL ≥77.7** (protocolo).
 - **Muro de los 5 Eventos** — cinco "paredes" de correlación (geofísica, atmosférica,
   oceánica, solar/geomagnética y financiera). Hay *breach* cuando **3 o más** se
   activan a la vez.
@@ -220,7 +288,9 @@ def _lectura_rapida(fant_media, breaches, viva, ganancia=None) -> str:
     acierto cada silencio en calma, que es casi todo el tiempo. Una ganancia
     <= 1x significa que alarmar a ciegas lo habría hecho igual de bien.
     """
-    tranquilo = (fant_media or 0) < 15 and not breaches
+    # D1 2026-11-12: "en calma" es la banda LOW del motor (<11.5).
+    # El 15 anterior era el HIGH de V32.
+    tranquilo = (fant_media or 0) < _UMB["MODERATE"] and not breaches
     partes = [f"el sistema estuvo **{'en calma' if tranquilo else 'inquieto'}**"]
     if fant_media is not None:
         partes.append(f"Fantasma medio **{fant_media:.1f}** ({_nivel_fantasma(fant_media)})")
@@ -503,6 +573,7 @@ def comparativo(conn) -> tuple:
         "comparativo_fantasma.png", resalta_max=True)
     if grafica:
         lineas.append("![Fantasma 7 días](graficas/comparativo_fantasma.png)")
+    lineas += [""] + _seccion_cobertura_schumann(conn)
     lineas += ["", GLOSARIO]
     ruta = DIR_ESTADO / "REPORTE_COMPARATIVO.md"
     ruta.write_text("\n".join(lineas), encoding="utf-8")
@@ -625,6 +696,7 @@ def _resumen_rango(conn, n_dias, titulo, archivo, prefijo_grafica):
         if g:
             adjuntos.append(str(g))
             lineas.append(f"![{tit}](graficas/{nombre})")
+    lineas += [""] + _seccion_cobertura_schumann(conn)
     lineas += ["", GLOSARIO]
     ruta = DIR_ESTADO / archivo
     ruta.write_text("\n".join(lineas), encoding="utf-8")

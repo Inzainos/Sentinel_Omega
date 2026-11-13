@@ -86,6 +86,69 @@ NOMBRES_LLANOS = {
 }
 
 
+def _seccion_cobertura_schumann(conn, ahora) -> list:
+    """Cobertura Schumann (D4 H3, 2026-11-12): días con dato vs NULL, último
+    día con dato, fuente del corte. Fail-soft: si la tabla no existe, lo dice
+    en vez de romper el reporte. NULL es ausencia, no cero (D4)."""
+    from datetime import timedelta as _td
+    hoy = (ahora - _td(hours=6)).strftime("%Y-%m-%d")
+    try:
+        tot, con_dato, sin_dato = conn.execute(
+            "SELECT COUNT(*), "
+            "SUM(CASE WHEN actividad IS NOT NULL THEN 1 ELSE 0 END), "
+            "SUM(CASE WHEN actividad IS NULL THEN 1 ELSE 0 END) "
+            "FROM tbl_schumann_diario"
+        ).fetchone()
+        ult = conn.execute(
+            "SELECT fecha, actividad, fuente FROM tbl_schumann_diario "
+            "WHERE actividad IS NOT NULL ORDER BY fecha DESC LIMIT 1"
+        ).fetchone()
+        ult_corte = conn.execute(
+            "SELECT fecha, actividad, fuente FROM tbl_schumann_diario "
+            "ORDER BY fecha DESC LIMIT 1"
+        ).fetchone()
+        n_hz, n_prec = conn.execute(
+            "SELECT SUM(CASE WHEN schumann_hz IS NOT NULL THEN 1 ELSE 0 END), "
+            "COUNT(*) FROM TBL_PRECURSORES_COSMICOS"
+        ).fetchone()
+    except Exception:
+        return ["## 📻 Cobertura Schumann", "",
+                "Sin datos de cobertura (tabla `tbl_schumann_diario` no "
+                "disponible en esta DB).", ""]
+    tot = tot or 0
+    con_dato = con_dato or 0
+    sin_dato = sin_dato or 0
+    out = ["## 📻 Cobertura Schumann — días con dato vs NULL (D4)", ""]
+    out.append(
+        f"Corte diario (`tbl_schumann_diario`): **{tot} días** registrados, "
+        f"**{con_dato} con dato** / **{sin_dato} NULL**.")
+    if ult:
+        try:
+            dias_sin = (datetime.strptime(hoy, "%Y-%m-%d").date()
+                        - datetime.strptime(ult[0], "%Y-%m-%d").date()).days
+        except Exception:
+            dias_sin = None
+        estado = ("🟢 LIVE — el corte es de hoy" if ult[0] == hoy else
+                  f"sin dato desde hace {dias_sin} días" if dias_sin is not None else
+                  "sin dato reciente")
+        out.append(
+            f"Último día con dato: **{ult[0]}** ({ult[1]:.2f} %, fuente "
+            f"`{ult[2] or '—'}`) — {estado}.")
+    else:
+        out.append("Último día con dato: — (ningún día con dato registrado).")
+    if ult_corte:
+        act = f"{ult_corte[1]:.2f} %" if ult_corte[1] is not None else "NULL"
+        out.append(
+            f"Último corte registrado: **{ult_corte[0]}** (fuente "
+            f"`{ult_corte[2] or '—'}`, actividad {act}).")
+    out.append(
+        f"`schumann_hz` en `TBL_PRECURSORES_COSMICOS`: **{n_hz or 0} no-nulos "
+        f"de {n_prec or 0}** — la regla Schumann sigue deshabilitada "
+        f"(ítem 19) mientras no haya Hz calibrada.")
+    out.append("")
+    return out
+
+
 def _barra(pct: float, ancho: int = 10) -> str:
     """Barra visual ▓▓▓░░ para porcentajes en Markdown."""
     if pct is None:
@@ -125,8 +188,10 @@ def generar(db_path: str = DB_DEFAULT, out_path: str = OUT_DEFAULT) -> str:
         emoji = {"LOW": "🟢", "MODERATE": "🟡", "HIGH": "🟠", "CRITICAL": "🔴"}.get(
             ciclo[4], "⚪"
         )
-        # Escala visual del fantasma: CRITICAL arranca en 30
-        fant_pct = min(1.0, ciclo[3] / 60.0)
+        # Escala visual del fantasma 0–100 (D1 2026-11-12): CRITICAL
+        # del motor arranca en 77.7; el viejo /60 con CRITICAL en 30
+        # era V32 y saturaba la barra antes de tiempo.
+        fant_pct = min(1.0, ciclo[3] / 100.0)
         lineas += [
             "## 📡 Último ciclo — lo que el sistema midió hace un momento",
             "",
@@ -239,7 +304,7 @@ def generar(db_path: str = DB_DEFAULT, out_path: str = OUT_DEFAULT) -> str:
             nivel_sem = "🔴 ROJO"
         elif b_ or (f_ >= _UMB["HIGH"] and s_ >= 0.85):
             nivel_sem = "🟠 NARANJA"
-        elif f_ >= 5 or s_ >= 0.80:
+        elif f_ >= _UMB["MODERATE"] or s_ >= 0.80:
             nivel_sem = "🟡 AMARILLO"
         elif f_ > 0 or m_ > 0:
             nivel_sem = "🔵 AZUL"
@@ -283,7 +348,8 @@ def generar(db_path: str = DB_DEFAULT, out_path: str = OUT_DEFAULT) -> str:
 
     # ── 🧱 Muro de los 5 frentes — detalle por pared ──
     # Cada pared se enciende si al menos una de sus señales está activa.
-    # FANTASMA (en pared SOLAR) necesita ≥15 para encenderse.
+    # FANTASMA (en pared SOLAR) necesita ≥28.6 (HIGH del motor, D1
+    # 2026-11-12) para encenderse; el ≥15 anterior era el HIGH de V32.
     try:
         muro_walls = {
             "GEOFÍSICO": {
@@ -1755,6 +1821,9 @@ def generar(db_path: str = DB_DEFAULT, out_path: str = OUT_DEFAULT) -> str:
         pass
 
     total_ciclos = conn.execute("SELECT COUNT(*) FROM TBL_CICLOS").fetchone()[0]
+
+    # ── Cobertura Schumann (D4 H3) ──
+    lineas += _seccion_cobertura_schumann(conn, ahora)
 
     # ── Sección de aciertos ──
     try:

@@ -839,7 +839,14 @@ class TestPrecursorScanner:
         assert len(volcanic) == 1
         assert volcanic[0].values["so2_mass"] == 250.0
 
-    def test_schumann_excitation(self):
+    def test_schumann_excitation(self, monkeypatch):
+        # D4/ítem 19 (2026-11-12): la regla Schumann está deshabilitada
+        # por defecto (SCHUMANN_RULE_ENABLED=False); este test prueba la
+        # LÓGICA con Hz sintética, así que la enciende solo aquí.
+        monkeypatch.setattr(
+            "sentinel_omega.core.precursor.scanner.SCHUMANN_RULE_ENABLED", True
+        )
+
         scanner = self._make_scanner()
         beta1 = {"schumann_frequency": 9.5, "schumann_activity": 250.0}
         detections = scanner.scan({}, beta1, {})
@@ -965,7 +972,14 @@ class TestPrecursorScanner:
         # su compuerta Kp), que es la memoria de días que sí debe existir
         assert float(np.min(serie_bz)) == -8.0
 
-    def test_multiple_simultaneous_precursors(self):
+    def test_multiple_simultaneous_precursors(self, monkeypatch):
+        # D4/ítem 19 (2026-11-12): la regla Schumann está deshabilitada
+        # por defecto (SCHUMANN_RULE_ENABLED=False); este test prueba la
+        # LÓGICA con Hz sintética, así que la enciende solo aquí.
+        monkeypatch.setattr(
+            "sentinel_omega.core.precursor.scanner.SCHUMANN_RULE_ENABLED", True
+        )
+
         scanner = self._make_scanner()
         omni_df = pd.DataFrame({
             "bz_gsm": [-25.0, -22.0],
@@ -1195,7 +1209,14 @@ class TestScannerPrecipitacion:
     def _beta1_with_schumann(self, hz: float = 8.2) -> dict:
         return {"schumann_frequency": hz, "schumann_activity": 150.0}
 
-    def test_heavy_rain_reading_detected(self):
+    def test_heavy_rain_reading_detected(self, monkeypatch):
+        # D4/ítem 19 (2026-11-12): la regla Schumann está deshabilitada
+        # por defecto (SCHUMANN_RULE_ENABLED=False); este test prueba la
+        # LÓGICA con Hz sintética, así que la enciende solo aquí.
+        monkeypatch.setattr(
+            "sentinel_omega.core.precursor.scanner.SCHUMANN_RULE_ENABLED", True
+        )
+
         scanner = self._make_scanner()
         atm = [{"station": "Xalapa", "lat": 19.5, "lon": -96.9,
                 "humidity_pct": 88.0, "temp_c": 26.0, "clouds_pct": 92.0,
@@ -1227,7 +1248,14 @@ class TestScannerPrecipitacion:
         prec = [d for d in detections if d.tipo == PrecursorType.PRECIPITACION]
         assert len(prec) == 0
 
-    def test_multiple_readings_multiple_detections(self):
+    def test_multiple_readings_multiple_detections(self, monkeypatch):
+        # D4/ítem 19 (2026-11-12): la regla Schumann está deshabilitada
+        # por defecto (SCHUMANN_RULE_ENABLED=False); este test prueba la
+        # LÓGICA con Hz sintética, así que la enciende solo aquí.
+        monkeypatch.setattr(
+            "sentinel_omega.core.precursor.scanner.SCHUMANN_RULE_ENABLED", True
+        )
+
         """Each rainy reading produces its own PrecursorDetection."""
         scanner = self._make_scanner()
         atm = [
@@ -1241,7 +1269,14 @@ class TestScannerPrecipitacion:
         prec = [d for d in detections if d.tipo == PrecursorType.PRECIPITACION]
         assert len(prec) == 2
 
-    def test_high_pi_boosts_confidence(self):
+    def test_high_pi_boosts_confidence(self, monkeypatch):
+        # D4/ítem 19 (2026-11-12): la regla Schumann está deshabilitada
+        # por defecto (SCHUMANN_RULE_ENABLED=False); este test prueba la
+        # LÓGICA con Hz sintética, así que la enciende solo aquí.
+        monkeypatch.setattr(
+            "sentinel_omega.core.precursor.scanner.SCHUMANN_RULE_ENABLED", True
+        )
+
         """A very high Π_i (≥ 45) should push confidence above 0.7."""
         scanner = self._make_scanner()
         atm = [{"station": "Veracruz", "lat": 19.18, "lon": -96.14,
