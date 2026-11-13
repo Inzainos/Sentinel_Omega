@@ -45,9 +45,10 @@ Tres consecuencias que conviene saber antes de leer cualquier cifra del sistema:
   niega a los siete; `beta1`, con AUC 0,800, porque la tasa base del nodo sola
   da 0,899: el modelo dice *qué* nodo, no *cuándo*.
 
-**Operación: todo con `systemctl --user`**, sin `sudo`. Puertos en `127.0.0.1`
-— **8128** el tablero Dash/Plotly **principal** (login + 17 pestañas), **8787** su API.
-— **5173** React/Vite legacy (comentado), **8510** Streamlit legado (comentado).
+**Operación: todo con `systemctl --user`**, sin `sudo`. Tableros —
+**8128** Dash/Plotly **principal** (login, 17 pestañas; escucha en `0.0.0.0`
+para acceso remoto, credenciales por entorno), **8787** su API. Legacy activos:
+**5173** React/Vite y **8510** Streamlit (acceso remoto desde Safari/iPad).
 
 Detalle reproducible en [`estado/BITACORA_2026-10-08.md`](estado/BITACORA_2026-10-08.md)
 y el resumen en [`CHANGELOG.md`](CHANGELOG.md).
